@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <!-- Mod Settings -->
+    <HT.AllowOtherXenotypes>Allow non-baseliner xenotypes to use the pod</HT.AllowOtherXenotypes>
+    <HT.AllowOtherXenotypesTooltip>If checked, any xenohuman can be transformed into a hussar. If unchecked, only baseliners can use the pod.</HT.AllowOtherXenotypesTooltip>
+    <HT.ItemCosts>Item Costs for Transformation</HT.ItemCosts>
+    <HT.GoJuiceCost>Go-Juice</HT.GoJuiceCost>
+    <HT.MedicineCost>Medicine</HT.MedicineCost>
+    <HT.ComponentCost>Components</HT.ComponentCost>
+    <HT.ConsumeMedicineOnFailure>Consume medicine on failure</HT.ConsumeMedicineOnFailure>
+    <HT.ConsumeMedicineOnFailureTooltip>If the process is cancelled (e.g., due to power loss), medicine will still be consumed.</HT.ConsumeMedicineOnFailureTooltip>
+    <HT.MedicineConsumedOnFailure>Medicine consumed on failure</HT.MedicineConsumedOnFailure>
+    <HT.TransformationDuration>Transformation Duration</HT.TransformationDuration>
+    <HT.Hours>{0} hours</HT.Hours>
+    <HT.PowerConsumption>Power Consumption</HT.PowerConsumption>
+    <HT.StopOnPowerLoss>Cancel process on power loss</HT.StopOnPowerLoss>
+    <HT.StopOnPowerLossTooltip>If checked, the transformation will be cancelled if the pod loses power. If power consumption is 0, this has no effect.</HT.StopOnPowerLossTooltip>
+    <HT.ResearchCost>Research Cost</HT.ResearchCost>
+    <HT.ResearchCostValue>Base Cost</HT.ResearchCostValue>
+    <HT.ResearchCostNote>Note: Changes to research cost require a game restart to take full effect.</HT.ResearchCostNote>
+    <HT.ResearchCostNoteTooltip>The research cost value in the research tree might not update visually without a restart, but the new cost will be used.</HT.ResearchCostNoteTooltip>
+
+    <!-- In-Game Messages and UI -->
+    <HT.TransformationProgress>Transformation: {0} complete</HT.TransformationProgress>
+    <HT.BeginTransformation>Begin Transformation</HT.BeginTransformation>
+    <HT.BeginTransformationDesc>Select a colonist to begin the transformation into a hussar.</HT.BeginTransformationDesc>
+    <HT.PowerLossMessage>power outage</HT.PowerLossMessage>
+    <HT.PodDestroyedMessage>pod was destroyed</HT.PodDestroyedMessage>
+    <HT.PawnDiedMessage>{0} died inside the pod.</HT.PawnDiedMessage>
+    <HT.TransformationCompleteMessage>{0} has successfully been transformed into a hussar.</HT.TransformationCompleteMessage>
+    <HT.TransformationCancelledMessage>{0}'s transformation has been cancelled due to {1}.</HT.TransformationCancelledMessage>
+    <HT.MedicineConsumedOnFailureMessage>{0} medicine was consumed.</HT.MedicineConsumedOnFailureMessage>
+    <HT.MissingIngredientsMessage>Missing required ingredients (Go-Juice, Medicine, Components).</HT.MissingIngredientsMessage>
+    
+    <!-- Acceptance Reports -->
+    <HT.AcceptanceReport_NotColonist>Must be a colonist.</HT.AcceptanceReport_NotColonist>
+    <HT.AcceptanceReport_TooYoung>Must be at least 13 years old.</HT.AcceptanceReport_TooYoung>
+    <HT.AcceptanceReport_NotBaseliner>Must be a baseliner (can be changed in mod settings).</HT.AcceptanceReport_NotBaseliner>
+    <HT.AcceptanceReport_Occupied>Pod is already in use.</HT.AcceptanceReport_Occupied>
+    <HT.AcceptanceReport_NoPower>Pod has no power.</HT.AcceptanceReport_NoPower>
+</LanguageData>
+

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <JobDef>
+    <defName>EnterHussarPod</defName>
+    <driverClass>HussarTransformation.JobDriver_EnterHussarPod</driverClass>
+    <reportString>entering hussar pod.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+
+  <!-- This recipe is a placeholder to make the interaction work, the actual logic is in C# -->
+  <RecipeDef>
+    <defName>HussarTransformationRecipe</defName>
+    <label>begin hussar transformation</label>
+    <description>Begin the process of transforming into a hussar.</description>
+    <jobString>Transforming into a hussar.</jobString>
+    <workAmount>10000</workAmount> <!-- Controlled by C# time setting -->
+    <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
+    <effectWorking>Cook</effectWorking>
+    <soundWorking>Recipe_CookMeal</soundWorking>
+    <allowMixingIngredients>true</allowMixingIngredients>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>GoJuice</li>
+          </thingDefs>
+        </filter>
+        <count>1</count> <!-- Controlled by settings -->
+      </li>
+      <li>
+        <filter>
+          <categories>
+            <li>Medicine</li>
+          </categories>
+        </filter>
+        <count>1</count> <!-- Controlled by settings -->
+      </li>
+       <li>
+        <filter>
+          <thingDefs>
+            <li>ComponentIndustrial</li>
+          </thingDefs>
+        </filter>
+        <count>1</count> <!-- Controlled by settings -->
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+        <thingDefs>
+            <li>GoJuice</li>
+            <li>MedicineIndustrial</li>
+            <li>ComponentIndustrial</li>
+        </thingDefs>
+    </fixedIngredientFilter>
+    <products/>
+    <recipeUsers>
+      <li>HussarPod</li>
+    </recipeUsers>
+  </RecipeDef>
+</Defs>

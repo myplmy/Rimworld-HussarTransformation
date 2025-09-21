@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <!-- Mod Settings -->
+    <HT.AllowOtherXenotypes>베이스라이너 외 제노휴먼 변형 허용</HT.AllowOtherXenotypes>
+    <HT.AllowOtherXenotypesTooltip>체크 시, 모든 제노휴먼이 후사르로 변형될 수 있습니다. 체크 해제 시, 베이스라이너만 변형기를 사용할 수 있습니다.</HT.AllowOtherXenotypesTooltip>
+    <HT.ItemCosts>변형 소모품</HT.ItemCosts>
+    <HT.GoJuiceCost>고주스</HT.GoJuiceCost>
+    <HT.MedicineCost>의약품</HT.MedicineCost>
+    <HT.ComponentCost>부품</HT.ComponentCost>
+    <HT.ConsumeMedicineOnFailure>작동 중단 시 의약품 소모</HT.ConsumeMedicineOnFailure>
+    <HT.ConsumeMedicineOnFailureTooltip>작동이 중단될 경우(예: 정전)에도 의약품이 소모됩니다.</HT.ConsumeMedicineOnFailureTooltip>
+    <HT.MedicineConsumedOnFailure>중단 시 소모될 의약품 개수</HT.MedicineConsumedOnFailure>
+    <HT.TransformationDuration>후사르 변형 시간</HT.TransformationDuration>
+    <HT.Hours>{0} 시간</HT.Hours>
+    <HT.PowerConsumption>전력 소모량</HT.PowerConsumption>
+    <HT.StopOnPowerLoss>전력 부족 시 작동 중단</HT.StopOnPowerLoss>
+    <HT.StopOnPowerLossTooltip>체크 시, 변형기가 전력을 잃으면 변형 과정이 중단됩니다. 전력 소모량이 0이면 이 설정은 효과가 없습니다.</HT.StopOnPowerLossTooltip>
+    <HT.ResearchCost>연구 비용</HT.ResearchCost>
+    <HT.ResearchCostValue>기본 비용</HT.ResearchCostValue>
+    <HT.ResearchCostNote>참고: 연구 비용 변경사항을 완전히 적용하려면 게임을 재시작해야 합니다.</HT.ResearchCostNote>
+    <HT.ResearchCostNoteTooltip>재시작 없이는 연구 트리에서 보이는 비용이 갱신되지 않을 수 있지만, 실제로는 새 비용이 적용됩니다.</HT.ResearchCostNoteTooltip>
+
+    <!-- In-Game Messages and UI -->
+    <HT.TransformationProgress>변형 {0} 완료</HT.TransformationProgress>
+    <HT.BeginTransformation>변형 시작</HT.BeginTransformation>
+    <HT.BeginTransformationDesc>후사르로 변형할 정착민을 선택합니다.</HT.BeginTransformationDesc>
+    <HT.PowerLossMessage>정전</HT.PowerLossMessage>
+    <HT.PodDestroyedMessage>장치가 파괴됨</HT.PodDestroyedMessage>
+    <HT.PawnDiedMessage>{0}(이)가 장치 안에서 사망했습니다.</HT.PawnDiedMessage>
+    <HT.TransformationCompleteMessage>{0}(이)가 성공적으로 후사르로 변형되었습니다.</HT.TransformationCompleteMessage>
+    <HT.TransformationCancelledMessage>{1}(으)로 인해 {0}의 변형이 중단되었습니다.</HT.TransformationCancelledMessage>
+    <HT.MedicineConsumedOnFailureMessage>의약품 {0}개가 소모되었습니다.</HT.MedicineConsumedOnFailureMessage>
+    <HT.MissingIngredientsMessage>필요한 재료(고주스, 의약품, 부품)가 부족합니다.</HT.MissingIngredientsMessage>
+    
+    <!-- Acceptance Reports -->
+    <HT.AcceptanceReport_NotColonist>정착민이어야 합니다.</HT.AcceptanceReport_NotColonist>
+    <HT.AcceptanceReport_TooYoung>최소 13세 이상이어야 합니다.</HT.AcceptanceReport_TooYoung>
+    <HT.AcceptanceReport_NotBaseliner>베이스라이너여야 합니다 (모드 설정에서 변경 가능).</HT.AcceptanceReport_NotBaseliner>
+    <HT.AcceptanceReport_Occupied>변형기가 이미 사용 중입니다.</HT.AcceptanceReport_Occupied>
+    <HT.AcceptanceReport_NoPower>변형기에 전력이 공급되지 않습니다.</HT.AcceptanceReport_NoPower>
+</LanguageData>

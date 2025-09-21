@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <ResearchProjectDef>
+    <defName>HussarTransformationSurgery</defName>
+    <label>hussar transformation surgery</label>
+    <description>Allows the construction of a Hussar Transformation Pod, which can turn a baseliner into a hussar through a lengthy operation. The process cannot be performed on individuals younger than 13 due to technical limitations.</description>
+    <baseCost>600</baseCost> <!-- This value will be overridden by mod settings -->
+    <techLevel>Industrial</techLevel>
+    <prerequisites>
+      <li>Xenogermination</li>
+    </prerequisites>
+    <researchViewX>10</researchViewX>
+    <researchViewY>2.5</researchViewY>
+    <unlocks>
+        <li>HussarPod</li>
+    </unlocks>
+  </ResearchProjectDef>
+</Defs>
