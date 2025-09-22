@@ -200,12 +200,17 @@ namespace HussarTransformation
     // 5. HUSSAR TRANSFORMATION POD (BUILDING)
     // ====================================================================
 
-    public class Building_HussarPod : Building_Enterable, IThingHolder
+    // Building_HussarPod 클래스 수정 - Building 상속으로 변경
+
+    public class Building_HussarPod : Building, IThingHolder
     {
         private CompPowerTrader powerComp;
         private float progress = 0f;
         private const int TicksPerRealSecond = 60;
         private const int TicksPerHour = 2500; // RimWorld hour
+
+        // innerContainer를 직접 구현
+        protected ThingOwner innerContainer;
 
         // Properties
         public bool IsRunning => ContainedPawn != null;
@@ -214,31 +219,40 @@ namespace HussarTransformation
         public float ProgressPercent => IsRunning ?
             progress / (HussarTransformationMod.settings.transformationDurationHours * TicksPerHour) : 0f;
 
-        // Required abstract property implementation
-        public override Vector3 PawnDrawOffset => Vector3.zero;
+        // Building_Casket처럼 HasAnyContents 구현
+        public bool HasAnyContents => innerContainer.Count > 0;
 
         // ====================================================================
         // Initialization
         // ====================================================================
 
-        public override void PostMake()
+        public Building_HussarPod()
         {
-            base.PostMake();
-            if (innerContainer == null)
-            {
-                innerContainer = new ThingOwner<Thing>(this);
-            }
+            innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
         }
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
             powerComp = GetComp<CompPowerTrader>();
-
             if (innerContainer == null)
             {
-                innerContainer = new ThingOwner<Thing>(this);
+                innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
             }
+        }
+
+        // ====================================================================
+        // IThingHolder 인터페이스 구현
+        // ====================================================================
+
+        public ThingOwner GetDirectlyHeldThings()
+        {
+            return innerContainer;
+        }
+
+        public void GetChildHolders(List<IThingHolder> outChildren)
+        {
+            ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
         }
 
         // ====================================================================
@@ -249,20 +263,26 @@ namespace HussarTransformation
         {
             base.ExposeData();
             Scribe_Values.Look(ref progress, "progress", 0f);
+            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
         }
 
         // ====================================================================
-        // Main Update Loop - Note: protected, not public
+        // Main Update Loop - 이제 확실히 작동할 것
         // ====================================================================
 
         protected override void Tick()
         {
             base.Tick();
 
-
-            // 디버그용 로그
-            string containedPawnName = ContainedPawn != null ? ContainedPawn.LabelShort : "None";
-            Log.Message($"[HussarPod] Tick | ContainedPawn: {containedPawnName}, Progress: {progress}, PowerOn: {PowerOn}");
+            // 디버그 로그
+            /*
+            if (Find.TickManager.TicksGame % 60 == 0) // 1초마다만 로그
+            {
+                string containedPawnName = ContainedPawn != null ? ContainedPawn.LabelShort : "None";
+                string containerInfo = innerContainer != null ? $"Count: {innerContainer.Count}" : "null";
+                Log.Message($"[HussarPod] Tick | ContainedPawn: {containedPawnName}, Container: {containerInfo}, Progress: {progress}, IsRunning: {IsRunning}");
+            }
+            */
 
             // Update power consumption based on state
             if (powerComp != null)
@@ -271,7 +291,10 @@ namespace HussarTransformation
                     -HussarTransformationMod.settings.powerConsumption : 0f;
             }
 
-            if (!IsRunning) return;
+            if (!IsRunning)
+            {
+                return;
+            }
 
             // Check if the pawn inside has died
             if (ContainedPawn == null || ContainedPawn.Dead)
@@ -281,7 +304,7 @@ namespace HussarTransformation
                     Messages.Message("HT.PawnDiedMessage".Translate(ContainedPawn.LabelShortCap),
                         this, MessageTypeDefOf.NegativeEvent);
                 }
-                EjectPawn();
+                EjectContents();
                 progress = 0f;
                 return;
             }
@@ -294,8 +317,34 @@ namespace HussarTransformation
                 return;
             }
 
+            // 욕구 관리
+            var pawn = ContainedPawn;
+            if (pawn?.needs != null)
+            {
+                if (pawn.needs.food != null) pawn.needs.food.CurLevel = pawn.needs.food.MaxLevel;
+                if (pawn.needs.rest != null) pawn.needs.rest.CurLevel = pawn.needs.rest.MaxLevel;
+                if (pawn.needs.joy != null) pawn.needs.joy.CurLevel = pawn.needs.joy.MaxLevel;
+                if (pawn.needs.comfort != null) pawn.needs.comfort.CurLevel = pawn.needs.comfort.MaxLevel;
+                if (pawn.needs.beauty != null) pawn.needs.beauty.CurLevel = pawn.needs.beauty.MaxLevel;
+                if (pawn.needs.outdoors != null) pawn.needs.outdoors.CurLevel = pawn.needs.outdoors.MaxLevel;
+            }
+
+            // 정신적 상태 관리
+            if (pawn?.mindState?.mentalStateHandler != null)
+            {
+                pawn.mindState.mentalStateHandler.Reset();
+            }
+
             // Progress the transformation
             progress += 1f;
+
+            // 진행 상황 로그 (10초마다)
+            /*
+            if (Find.TickManager.TicksGame % 600 == 0)
+            {
+                Log.Message($"[HussarPod] Progress updated: {progress}, Percent: {ProgressPercent:P2}");
+            }
+            */
 
             // Check if transformation is complete
             if (ProgressPercent >= 1f)
@@ -305,16 +354,83 @@ namespace HussarTransformation
         }
 
         // ====================================================================
-        // Destruction Handling
+        // 직접 구현한 Pawn 관리 메서드들
         // ====================================================================
 
-        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
+        public virtual bool TryAcceptThing(Thing thing, bool allowSpecialEffects = true)
         {
-            if (IsRunning)
+            if (thing is Pawn pawn)
             {
-                CancelTransformation("HT.PodDestroyedMessage".Translate());
+                return CanAcceptPawn(pawn).Accepted && TryAcceptPawn(pawn);
             }
-            base.Destroy(mode);
+            return false;
+        }
+
+        private bool TryAcceptPawn(Pawn pawn)
+        {
+            if (!CanAcceptPawn(pawn).Accepted) return false;
+
+            // Consume ingredients
+            if (!ConsumeIngredients())
+            {
+                Messages.Message("HT.MissingIngredientsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
+                return false;
+            }
+
+            // Pawn을 DeSpawn하고 container에 추가
+            if (pawn.Spawned)
+            {
+                pawn.DeSpawn();
+            }
+
+            bool success = innerContainer.TryAdd(pawn, true);
+
+            if (success)
+            {
+                progress = 0f;
+
+                // Pawn의 faction 정보 업데이트 (Building_Casket 방식)
+                if (pawn.Faction != null && pawn.Faction.IsPlayer)
+                {
+                    // contentsKnown = true; // 필요시 추가
+                }
+
+                Log.Message($"[HussarPod] Pawn {pawn.LabelShort} accepted, Container count: {innerContainer?.Count ?? 0}");
+            }
+
+            return success;
+        }
+
+        public AcceptanceReport CanAcceptPawn(Pawn pawn)
+        {
+            if (pawn == null)
+                return false;
+
+            if (!pawn.IsColonist || pawn.IsQuestLodger())
+                return new AcceptanceReport("HT.AcceptanceReport_NotColonist".Translate());
+
+            if (pawn.ageTracker?.AgeBiologicalYears < 13)
+                return new AcceptanceReport("HT.AcceptanceReport_TooYoung".Translate());
+
+            if (pawn.genes?.Xenotype != null &&
+                pawn.genes.Xenotype != XenotypeDefOf.Baseliner &&
+                !HussarTransformationMod.settings.allowOtherXenotypes)
+                return new AcceptanceReport("HT.AcceptanceReport_NotBaseliner".Translate());
+
+            if (HasAnyContents)
+                return new AcceptanceReport("HT.AcceptanceReport_Occupied".Translate());
+
+            bool needsPower = HussarTransformationMod.settings.powerConsumption > 0;
+            if (needsPower && !PowerOn)
+                return new AcceptanceReport("HT.AcceptanceReport_NoPower".Translate());
+
+            return true;
+        }
+
+        // Building_Casket의 EjectContents를 직접 구현
+        public virtual void EjectContents()
+        {
+            innerContainer.TryDropAll(InteractionCell, Map, ThingPlaceMode.Near);
         }
 
         // ====================================================================
@@ -332,7 +448,7 @@ namespace HussarTransformation
                 return;
             }
 
-            EjectPawn();
+            EjectContents();
 
             // Change Xenotype to Hussar
             if (pawn.genes != null)
@@ -362,7 +478,7 @@ namespace HussarTransformation
                 return;
             }
 
-            EjectPawn();
+            EjectContents();
             progress = 0f;
 
             if (HussarTransformationMod.settings.consumeMedicineOnFailure)
@@ -382,79 +498,39 @@ namespace HussarTransformation
         }
 
         // ====================================================================
-        // Pawn Management
+        // 파괴 시 내용물 처리 (Building_Casket 방식)
         // ====================================================================
 
-        private void EjectPawn()
+        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
-            if (ContainedPawn == null)
-            {
-                innerContainer.Clear();
-                return;
-            }
+            Map map = Map;
+            base.Destroy(mode);
 
-            Pawn pawn = ContainedPawn;
-            innerContainer.TryDrop(pawn, this.InteractionCell, this.Map, ThingPlaceMode.Near,
-                out Thing droppedThing, null, null);
+            if (innerContainer.Count > 0 && (mode == DestroyMode.Deconstruct || mode == DestroyMode.KillFinalize))
+            {
+                if (mode != DestroyMode.Deconstruct)
+                {
+                    // Pawn이 있으면 기절시키기
+                    List<Pawn> pawns = new List<Pawn>();
+                    foreach (Thing item in innerContainer)
+                    {
+                        if (item is Pawn pawn)
+                        {
+                            pawns.Add(pawn);
+                        }
+                    }
+                    foreach (Pawn pawn in pawns)
+                    {
+                        HealthUtility.DamageUntilDowned(pawn);
+                    }
+                }
+                innerContainer.TryDropAll(Position, map, ThingPlaceMode.Near);
+            }
+            innerContainer.ClearAndDestroyContents();
         }
 
         // ====================================================================
-        // Pawn Acceptance - Override without calling base
-        // ====================================================================
-
-        public override AcceptanceReport CanAcceptPawn(Pawn pawn)
-        {
-            if (pawn == null)
-                return false;
-
-            if (!pawn.IsColonist || pawn.IsQuestLodger())
-                return new AcceptanceReport("HT.AcceptanceReport_NotColonist".Translate());
-
-            if (pawn.ageTracker?.AgeBiologicalYears < 13)
-                return new AcceptanceReport("HT.AcceptanceReport_TooYoung".Translate());
-
-            if (pawn.genes?.Xenotype != null &&
-                pawn.genes.Xenotype != XenotypeDefOf.Baseliner &&
-                !HussarTransformationMod.settings.allowOtherXenotypes)
-                return new AcceptanceReport("HT.AcceptanceReport_NotBaseliner".Translate());
-
-            if (IsRunning)
-                return new AcceptanceReport("HT.AcceptanceReport_Occupied".Translate());
-
-            bool needsPower = HussarTransformationMod.settings.powerConsumption > 0;
-            if (needsPower && !PowerOn)
-                return new AcceptanceReport("HT.AcceptanceReport_NoPower".Translate());
-
-            // Return true instead of calling base
-            return true;
-        }
-
-        public override void TryAcceptPawn(Pawn pawn)
-        {
-            if (!CanAcceptPawn(pawn).Accepted) return;
-        
-            // Consume ingredients
-            if (!ConsumeIngredients())
-            {
-                Messages.Message("HT.MissingIngredientsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
-                return;
-            }
-        
-            if (pawn.Spawned)
-            {
-                pawn.DeSpawn(); // 맵에서 제거
-            }
-        
-            bool accepted = innerContainer.TryAdd(pawn, true);
-            if (accepted)
-            {
-                progress = 0f;
-            }
-        }
-
-
-        // ====================================================================
-        // Ingredient Management
+        // 나머지 메서드들은 기존과 동일 (ConsumeIngredients, GetInspectString, GetGizmos 등)
         // ====================================================================
 
         private bool ConsumeIngredients()
@@ -498,7 +574,6 @@ namespace HussarTransformation
         {
             if (this.Map == null) return 0;
 
-            // Get all medicine items
             var medicines = this.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
                 .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
                 .Sum(t => t.stackCount);
@@ -529,7 +604,6 @@ namespace HussarTransformation
         {
             if (count <= 0 || this.Map == null) return;
 
-            // Get all medicine items, prioritize cheaper ones
             var medicines = this.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
                 .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
                 .OrderBy(t => t.MarketValue)
@@ -545,10 +619,6 @@ namespace HussarTransformation
                 if (remaining <= 0) break;
             }
         }
-
-        // ====================================================================
-        // UI and Gizmos
-        // ====================================================================
 
         public override string GetInspectString()
         {
@@ -652,14 +722,15 @@ namespace HussarTransformation
             // Go to the pod
             yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.InteractionCell);
 
-            // Enter the pod
+            // Enter the pod - Building_Casket 방식으로 변경
             Toil enter = new Toil();
             enter.initAction = () =>
             {
                 var pod = Pod;
                 if (pod != null)
                 {
-                    pod.TryAcceptPawn(pawn);
+                    // Building_Casket의 TryAcceptThing 사용
+                    pod.TryAcceptThing(pawn, true);
                 }
             };
             enter.defaultCompleteMode = ToilCompleteMode.Instant;

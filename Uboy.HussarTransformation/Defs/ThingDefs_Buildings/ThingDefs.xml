@@ -4,6 +4,7 @@
     <defName>HussarPod</defName>
     <label>hussar transformation pod</label>
     <description>A high-tech pod that restructures a baseliner's xenotype into a hussar through a complex bio-mechanical process. Requires Go-Juice, medicine, and components to operate. The process is lengthy and requires constant power.</description>
+    <tickerType>Normal</tickerType>
     <thingClass>HussarTransformation.Building_HussarPod</thingClass>
     <graphicData>
   <!-- 옵션 1: 올바른 바닐라 경로 -->
