@@ -6,8 +6,17 @@
     <description>A high-tech pod that restructures a baseliner's xenotype into a hussar through a complex bio-mechanical process. Requires Go-Juice, medicine, and components to operate. The process is lengthy and requires constant power.</description>
     <thingClass>HussarTransformation.Building_HussarPod</thingClass>
     <graphicData>
-      <texPath>Things/Building/Misc/HussarPod</texPath>
+  <!-- 옵션 1: 올바른 바닐라 경로 -->
+      <texPath>Things/Building/Ship/ShipCryptosleepCasket</texPath>
+  
+  <!-- 또는 옵션 2: 다른 바닐라 건물 사용 -->
+  <!-- <texPath>Things/Building/Production/BiosculturePod/BiosculturePod</texPath> -->
+  
+  <!-- 또는 옵션 3: 단순 박스 형태 -->
+  <!-- <texPath>Things/Building/Production/HopperFull</texPath> -->
+  <!-- <graphicClass>Graphic_Single</graphicClass> -->
       <graphicClass>Graphic_Multi</graphicClass>
+      <color>(180,180,255)</color>  <!-- RGB 값으로 색조 변경 -->
       <drawSize>(1,2)</drawSize>
       <damageData>
         <cornerTL>Damage/Corner</cornerTL>
@@ -36,27 +45,18 @@
     <comps>
       <li Class="CompProperties_Power">
         <compClass>CompPowerTrader</compClass>
-        <!-- Set base consumption to 0. C# code will handle consumption when active. -->
-        <basePowerConsumption>0</basePowerConsumption>
+        <basePowerConsumption>200</basePowerConsumption>  <!-- 기본값 200 설정 -->
+        <shortCircuitInRain>false</shortCircuitInRain>
       </li>
       <li Class="CompProperties_Flickable"/>
-       <li Class="CompProperties_Enterable">
-        <enterJob>EnterHussarPod</enterJob>
-        <exitJob>JobDefOf.Vomit</exitJob> 
-        <enterSound>CryptosleepCasket_Accept</enterSound>
-        <exitSound>CryptosleepCasket_Eject</exitSound>
-      </li>
     </comps>
     <building>
       <canPlaceOverWall>false</canPlaceOverWall>
       <ai_chillDestination>false</ai_chillDestination>
       <isInert>true</isInert>
     </building>
-    <placeWorkers>
-      <li>PlaceWorker_ShowFacilitiesConnections</li>
-    </placeWorkers>
     <researchPrerequisites>
-      <li>HussarTransformationTech</li>
+      <li>HussarTransformationSurgery</li>
     </researchPrerequisites>
     <constructionSkillPrerequisite>6</constructionSkillPrerequisite>
     <designationCategory>Misc</designationCategory>

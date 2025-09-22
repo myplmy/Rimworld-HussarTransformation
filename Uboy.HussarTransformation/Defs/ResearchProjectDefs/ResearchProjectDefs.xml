@@ -9,10 +9,14 @@
     <prerequisites>
       <li>Xenogermination</li>
     </prerequisites>
-    <researchViewX>10</researchViewX>
-    <researchViewY>2.5</researchViewY>
-    <unlocks>
-        <li>HussarPod</li>
-    </unlocks>
+    <tab>HussarTech</tab>
+    <researchViewX>0</researchViewX>
+    <researchViewY>0</researchViewY>
   </ResearchProjectDef>
+
+<ResearchTabDef>
+  <defName>HussarTech</defName>
+  <label>HussarTech</label>
+  <description>HussarTech</description>
+</ResearchTabDef>
 </Defs>

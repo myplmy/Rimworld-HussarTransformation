@@ -38,5 +38,8 @@
     <HT.AcceptanceReport_NotBaseliner>Must be a baseliner (can be changed in mod settings).</HT.AcceptanceReport_NotBaseliner>
     <HT.AcceptanceReport_Occupied>Pod is already in use.</HT.AcceptanceReport_Occupied>
     <HT.AcceptanceReport_NoPower>Pod has no power.</HT.AcceptanceReport_NoPower>
+
+   <!-- Power Consumption -->
+   <W>{0} W</W>
 </LanguageData>
 

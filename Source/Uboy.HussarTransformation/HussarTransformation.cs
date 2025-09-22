@@ -1,13 +1,41 @@
 ﻿using RimWorld;
-using UnityEngine;
-using Verse;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
+using Verse;
+using Verse.AI;
 
 namespace HussarTransformation
 {
     // ====================================================================
-    // 1. MOD SETTINGS
+    // 1. DEF REFERENCES
+    // ====================================================================
+
+    [DefOf]
+    public static class XenotypeDefOf
+    {
+        public static XenotypeDef Hussar;
+        public static XenotypeDef Baseliner;
+
+        static XenotypeDefOf()
+        {
+            DefOfHelper.EnsureInitializedInCtor(typeof(XenotypeDefOf));
+        }
+    }
+
+    [DefOf]
+    public static class HediffDefOf
+    {
+        public static HediffDef GoJuiceAddiction;
+
+        static HediffDefOf()
+        {
+            DefOfHelper.EnsureInitializedInCtor(typeof(HediffDefOf));
+        }
+    }
+
+    // ====================================================================
+    // 2. MOD SETTINGS
     // ====================================================================
 
     public class HussarTransformationSettings : ModSettings
@@ -44,8 +72,19 @@ namespace HussarTransformation
             {
                 medicineConsumedOnFailure = medicineCost;
             }
+            goJuiceCost = Mathf.Clamp(goJuiceCost, 0, 99);
+            medicineCost = Mathf.Clamp(medicineCost, 0, 99);
+            componentCost = Mathf.Clamp(componentCost, 0, 99);
+            medicineConsumedOnFailure = Mathf.Clamp(medicineConsumedOnFailure, 0, medicineCost);
+            transformationDurationHours = Mathf.Clamp(transformationDurationHours, 0f, 24f);
+            powerConsumption = Mathf.Clamp(powerConsumption, 0, 1000);
+            researchCost = Mathf.Clamp(researchCost, 0, 9999);
         }
     }
+
+    // ====================================================================
+    // 3. MOD CLASS
+    // ====================================================================
 
     public class HussarTransformationMod : Mod
     {
@@ -62,43 +101,56 @@ namespace HussarTransformation
             listingStandard.Begin(inRect);
 
             // (1) Allow other xenotypes
-            listingStandard.CheckboxLabeled("HT.AllowOtherXenotypes".Translate(), ref settings.allowOtherXenotypes, "HT.AllowOtherXenotypesTooltip".Translate());
+            listingStandard.CheckboxLabeled("HT.AllowOtherXenotypes".Translate(), ref settings.allowOtherXenotypes,
+                "HT.AllowOtherXenotypesTooltip".Translate());
             listingStandard.GapLine();
 
             // (2) Item Costs
             listingStandard.Label("HT.ItemCosts".Translate());
+
             string goJuiceBuffer = settings.goJuiceCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.GoJuiceCost".Translate(), ref settings.goJuiceCost, ref goJuiceBuffer, 0, 99);
+            listingStandard.TextFieldNumericLabeled("    " + "HT.GoJuiceCost".Translate(),
+                ref settings.goJuiceCost, ref goJuiceBuffer, 0, 99);
+
             string medicineBuffer = settings.medicineCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.MedicineCost".Translate(), ref settings.medicineCost, ref medicineBuffer, 0, 99);
+            listingStandard.TextFieldNumericLabeled("    " + "HT.MedicineCost".Translate(),
+                ref settings.medicineCost, ref medicineBuffer, 0, 99);
+
             string componentBuffer = settings.componentCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.ComponentCost".Translate(), ref settings.componentCost, ref componentBuffer, 0, 99);
-            
-            listingStandard.CheckboxLabeled("    " + "HT.ConsumeMedicineOnFailure".Translate(), ref settings.consumeMedicineOnFailure, "HT.ConsumeMedicineOnFailureTooltip".Translate());
+            listingStandard.TextFieldNumericLabeled("    " + "HT.ComponentCost".Translate(),
+                ref settings.componentCost, ref componentBuffer, 0, 99);
+
+            listingStandard.CheckboxLabeled("    " + "HT.ConsumeMedicineOnFailure".Translate(),
+                ref settings.consumeMedicineOnFailure, "HT.ConsumeMedicineOnFailureTooltip".Translate());
+
             if (settings.consumeMedicineOnFailure)
             {
                 string medicineFailureBuffer = settings.medicineConsumedOnFailure.ToString();
-                listingStandard.TextFieldNumericLabeled("        " + "HT.MedicineConsumedOnFailure".Translate(), ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
+                listingStandard.TextFieldNumericLabeled("        " + "HT.MedicineConsumedOnFailure".Translate(),
+                    ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
             }
             listingStandard.GapLine();
 
             // (3) Transformation Duration
-            listingStandard.Label("HT.TransformationDuration".Translate() + ": " + "HT.Hours".Translate(settings.transformationDurationHours.ToString("0.0")));
+            listingStandard.Label("HT.TransformationDuration".Translate() + ": " +
+                "HT.Hours".Translate(settings.transformationDurationHours.ToString("0.0")));
             settings.transformationDurationHours = listingStandard.Slider(settings.transformationDurationHours, 0f, 24f);
             listingStandard.GapLine();
 
             // (4) Power Consumption
-            listingStandard.Label("HT.PowerConsumption".Translate() + ": " + "W".Translate(settings.powerConsumption.ToString()));
+            listingStandard.Label("HT.PowerConsumption".Translate() + ": " +
+                settings.powerConsumption.ToString() + " W");
             settings.powerConsumption = (int)listingStandard.Slider(settings.powerConsumption, 0, 1000);
-            listingStandard.CheckboxLabeled("    " + "HT.StopOnPowerLoss".Translate(), ref settings.stopOnPowerLoss, "HT.StopOnPowerLossTooltip".Translate());
+            listingStandard.CheckboxLabeled("    " + "HT.StopOnPowerLoss".Translate(),
+                ref settings.stopOnPowerLoss, "HT.StopOnPowerLossTooltip".Translate());
             listingStandard.GapLine();
 
             // (5) Research Cost
             listingStandard.Label("HT.ResearchCost".Translate());
             string researchBuffer = settings.researchCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.ResearchCostValue".Translate(), ref settings.researchCost, ref researchBuffer, 0, 9999);
+            listingStandard.TextFieldNumericLabeled("    " + "HT.ResearchCostValue".Translate(),
+                ref settings.researchCost, ref researchBuffer, 0, 9999);
             listingStandard.Label("HT.ResearchCostNote".Translate(), -1, "HT.ResearchCostNoteTooltip".Translate());
-
 
             listingStandard.End();
             base.DoSettingsWindowContents(inRect);
@@ -118,20 +170,23 @@ namespace HussarTransformation
 
         public static void ApplySettingsToDefs()
         {
-            DefDatabase<ResearchProjectDef>.GetNamed("HussarTransformationSurgery").baseCost = settings.researchCost;
-            ThingDef hussarPod = DefDatabase<ThingDef>.GetNamed("HussarPod");
-            
-            // Get the power properties from the ThingDef
-            var powerProps = hussarPod.GetCompProperties<CompProperties_Power>();
-            if (powerProps != null)
+            if (settings == null) return;
+
+            // Apply research cost only
+            var researchDef = DefDatabase<ResearchProjectDef>.GetNamedSilentFail("HussarTransformationSurgery");
+            if (researchDef != null)
             {
-                // Apply settings to the Def. The building will read from this.
-                powerProps.basePowerConsumption = settings.powerConsumption;
-                powerProps.idlePowerDraw = 0; // Explicitly set idle power to 0
+                researchDef.baseCost = settings.researchCost;
             }
+
+            // 전력 설정은 제거 - Tick()에서 PowerOutput으로 동적 관리
         }
     }
-    
+
+    // ====================================================================
+    // 4. STARTUP INITIALIZER
+    // ====================================================================
+
     [StaticConstructorOnStartup]
     public static class Startup
     {
@@ -141,85 +196,131 @@ namespace HussarTransformation
         }
     }
 
-
     // ====================================================================
-    // 2. HUSSAR TRANSFORMATION POD (BUILDING)
+    // 5. HUSSAR TRANSFORMATION POD (BUILDING)
     // ====================================================================
 
     public class Building_HussarPod : Building_Enterable, IThingHolder
     {
         private CompPowerTrader powerComp;
-        private float progress = 0;
-        private const int TicksPerSecond = 60;
+        private float progress = 0f;
+        private const int TicksPerRealSecond = 60;
+        private const int TicksPerHour = 2500; // RimWorld hour
 
-        // A property to easily check if the pod is transforming someone.
+        // Properties
         public bool IsRunning => ContainedPawn != null;
+        public Pawn ContainedPawn => innerContainer?.FirstOrDefault() as Pawn;
+        public bool PowerOn => powerComp?.PowerOn ?? true;
+        public float ProgressPercent => IsRunning ?
+            progress / (HussarTransformationMod.settings.transformationDurationHours * TicksPerHour) : 0f;
+
+        // Required abstract property implementation
+        public override Vector3 PawnDrawOffset => Vector3.zero;
+
+        // ====================================================================
+        // Initialization
+        // ====================================================================
+
+        public override void PostMake()
+        {
+            base.PostMake();
+            if (innerContainer == null)
+            {
+                innerContainer = new ThingOwner<Thing>(this);
+            }
+        }
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
-            this.powerComp = this.GetComp<CompPowerTrader>();
+            powerComp = GetComp<CompPowerTrader>();
+
+            if (innerContainer == null)
+            {
+                innerContainer = new ThingOwner<Thing>(this);
+            }
         }
 
-        public override void Tick()
+        // ====================================================================
+        // Save/Load
+        // ====================================================================
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref progress, "progress", 0f);
+        }
+
+        // ====================================================================
+        // Main Update Loop - Note: protected, not public
+        // ====================================================================
+
+        protected override void Tick()
         {
             base.Tick();
 
-            // The building's power component reads its consumption values from the ThingDef.
-            // We just need to tell it when to be in 'active' vs 'idle' state.
+
+            // 디버그용 로그
+            string containedPawnName = ContainedPawn != null ? ContainedPawn.LabelShort : "None";
+            Log.Message($"[HussarPod] Tick | ContainedPawn: {containedPawnName}, Progress: {progress}, PowerOn: {PowerOn}");
+
+            // Update power consumption based on state
             if (powerComp != null)
             {
-                var powerProps = powerComp.Props as CompProperties_Power;
-                if (IsRunning)
-                {
-                    // Consume the 'active' power amount defined in the Def
-                    powerComp.PowerOutput = -powerProps.basePowerConsumption;
-                }
-                else
-                {
-                    // Consume the 'idle' power amount defined in the Def
-                    powerComp.PowerOutput = -powerProps.idlePowerDraw;
-                }
+                powerComp.PowerOutput = IsRunning ?
+                    -HussarTransformationMod.settings.powerConsumption : 0f;
             }
 
             if (!IsRunning) return;
 
-            // Check if the pawn inside has died for any reason
-            if (ContainedPawn.Dead)
+            // Check if the pawn inside has died
+            if (ContainedPawn == null || ContainedPawn.Dead)
             {
-                Messages.Message("HT.PawnDiedMessage".Translate(ContainedPawn.LabelShortCap), this, MessageTypeDefOf.NegativeEvent);
-                EjectContents();
-                progress = 0;
-                return; // Stop further processing for this tick
+                if (ContainedPawn != null)
+                {
+                    Messages.Message("HT.PawnDiedMessage".Translate(ContainedPawn.LabelShortCap),
+                        this, MessageTypeDefOf.NegativeEvent);
+                }
+                EjectPawn();
+                progress = 0f;
+                return;
             }
 
             // Power check
-            if (powerComp != null && !powerComp.PowerOn && HussarTransformationMod.settings.powerConsumption > 0 && HussarTransformationMod.settings.stopOnPowerLoss)
+            bool needsPower = HussarTransformationMod.settings.powerConsumption > 0;
+            if (needsPower && !PowerOn && HussarTransformationMod.settings.stopOnPowerLoss)
             {
                 CancelTransformation("HT.PowerLossMessage".Translate());
                 return;
             }
 
+            // Progress the transformation
             progress += 1f;
 
-            // Transformation complete
+            // Check if transformation is complete
             if (ProgressPercent >= 1f)
             {
                 FinishTransformation();
             }
         }
-        
-        // Override Destroy to safely eject the pawn before the building is removed
+
+        // ====================================================================
+        // Destruction Handling
+        // ====================================================================
+
         public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
             if (IsRunning)
             {
-                // Eject the pawn before destruction, using a new message key
                 CancelTransformation("HT.PodDestroyedMessage".Translate());
             }
             base.Destroy(mode);
         }
-        
+
+        // ====================================================================
+        // Transformation Logic
+        // ====================================================================
+
         private void FinishTransformation()
         {
             Pawn pawn = ContainedPawn;
@@ -227,132 +328,242 @@ namespace HussarTransformation
             {
                 Log.Error("Hussar Pod tried to finish transformation but pawn was null.");
                 innerContainer.Clear();
-                progress = 0;
+                progress = 0f;
                 return;
             }
 
-            EjectContents();
-            
+            EjectPawn();
+
             // Change Xenotype to Hussar
-            pawn.genes.SetXenotype(XenotypeDefOf.Hussar);
+            if (pawn.genes != null)
+            {
+                pawn.genes.SetXenotype(XenotypeDefOf.Hussar);
+            }
 
             // Add Go-Juice dependency
-            Hediff hediff = HediffMaker.MakeHediff(HediffDefOf.GoJuiceAddiction, pawn);
-            pawn.health.AddHediff(hediff);
+            if (pawn.health != null)
+            {
+                Hediff hediff = HediffMaker.MakeHediff(HediffDefOf.GoJuiceAddiction, pawn);
+                pawn.health.AddHediff(hediff);
+            }
 
-            Messages.Message("HT.TransformationCompleteMessage".Translate(pawn.LabelShortCap), pawn, MessageTypeDefOf.PositiveEvent);
-            progress = 0;
+            Messages.Message("HT.TransformationCompleteMessage".Translate(pawn.LabelShortCap),
+                pawn, MessageTypeDefOf.PositiveEvent);
+            progress = 0f;
         }
 
         private void CancelTransformation(string reason)
         {
             Pawn pawn = ContainedPawn;
-            EjectContents();
-            progress = 0;
+            if (pawn == null)
+            {
+                innerContainer.Clear();
+                progress = 0f;
+                return;
+            }
+
+            EjectPawn();
+            progress = 0f;
 
             if (HussarTransformationMod.settings.consumeMedicineOnFailure)
             {
-                // We don't have direct access to the items consumed, so we can't refund them.
-                // The logic assumes medicine is consumed on start. We'll just show a message.
-                Messages.Message("HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason) + "\n" + "HT.MedicineConsumedOnFailureMessage".Translate(HussarTransformationMod.settings.medicineConsumedOnFailure), pawn, MessageTypeDefOf.NegativeEvent);
+                Messages.Message(
+                    "HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason) + "\n" +
+                    "HT.MedicineConsumedOnFailureMessage".Translate(
+                        HussarTransformationMod.settings.medicineConsumedOnFailure),
+                    pawn, MessageTypeDefOf.NegativeEvent);
             }
             else
             {
-                 Messages.Message("HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason), pawn, MessageTypeDefOf.NegativeEvent);
+                Messages.Message(
+                    "HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason),
+                    pawn, MessageTypeDefOf.NegativeEvent);
             }
         }
 
+        // ====================================================================
+        // Pawn Management
+        // ====================================================================
+
+        private void EjectPawn()
+        {
+            if (ContainedPawn == null)
+            {
+                innerContainer.Clear();
+                return;
+            }
+
+            Pawn pawn = ContainedPawn;
+            innerContainer.TryDrop(pawn, this.InteractionCell, this.Map, ThingPlaceMode.Near,
+                out Thing droppedThing, null, null);
+        }
+
+        // ====================================================================
+        // Pawn Acceptance - Override without calling base
+        // ====================================================================
 
         public override AcceptanceReport CanAcceptPawn(Pawn pawn)
         {
+            if (pawn == null)
+                return false;
+
             if (!pawn.IsColonist || pawn.IsQuestLodger())
                 return new AcceptanceReport("HT.AcceptanceReport_NotColonist".Translate());
 
-            if (pawn.ageTracker.AgeBiologicalYears < 13)
+            if (pawn.ageTracker?.AgeBiologicalYears < 13)
                 return new AcceptanceReport("HT.AcceptanceReport_TooYoung".Translate());
 
-            if (pawn.genes.Xenotype != XenotypeDefOf.Baseliner && !HussarTransformationMod.settings.allowOtherXenotypes)
+            if (pawn.genes?.Xenotype != null &&
+                pawn.genes.Xenotype != XenotypeDefOf.Baseliner &&
+                !HussarTransformationMod.settings.allowOtherXenotypes)
                 return new AcceptanceReport("HT.AcceptanceReport_NotBaseliner".Translate());
 
             if (IsRunning)
-                 return new AcceptanceReport("HT.AcceptanceReport_Occupied".Translate());
+                return new AcceptanceReport("HT.AcceptanceReport_Occupied".Translate());
 
-            if (!PowerOn)
-                 return new AcceptanceReport("HT.AcceptanceReport_NoPower".Translate());
+            bool needsPower = HussarTransformationMod.settings.powerConsumption > 0;
+            if (needsPower && !PowerOn)
+                return new AcceptanceReport("HT.AcceptanceReport_NoPower".Translate());
 
-            return base.CanAcceptPawn(pawn);
+            // Return true instead of calling base
+            return true;
         }
 
         public override void TryAcceptPawn(Pawn pawn)
         {
             if (!CanAcceptPawn(pawn).Accepted) return;
-
+        
             // Consume ingredients
             if (!ConsumeIngredients())
             {
                 Messages.Message("HT.MissingIngredientsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
                 return;
             }
-
-            bool accepted = innerContainer.TryAddOrTransfer(pawn);
+        
+            if (pawn.Spawned)
+            {
+                pawn.DeSpawn(); // 맵에서 제거
+            }
+        
+            bool accepted = innerContainer.TryAdd(pawn, true);
             if (accepted)
             {
-                progress = 0;
+                progress = 0f;
             }
         }
+
+
+        // ====================================================================
+        // Ingredient Management
+        // ====================================================================
 
         private bool ConsumeIngredients()
         {
             var settings = HussarTransformationMod.settings;
             var map = this.Map;
+            if (map == null) return false;
 
-            // Check for ingredients first
-            if (CountItems(ThingDefOf.GoJuice) < settings.goJuiceCost ||
-                CountItems(ThingDefOf.MedicineIndustrial) < settings.medicineCost || // Simplified to industrial medicine for example
-                CountItems(ThingDefOf.ComponentIndustrial) < settings.componentCost)
-            {
-                 return false;
-            }
+            // Check Go-Juice
+            int goJuiceAvailable = CountAvailableThings(ThingDefOf.GoJuice);
+            if (goJuiceAvailable < settings.goJuiceCost)
+                return false;
+
+            // Check Medicine (any type)
+            int medicineAvailable = CountAvailableMedicine();
+            if (medicineAvailable < settings.medicineCost)
+                return false;
+
+            // Check Components
+            int componentsAvailable = CountAvailableThings(ThingDefOf.ComponentIndustrial);
+            if (componentsAvailable < settings.componentCost)
+                return false;
 
             // Consume ingredients
-            DestroyItems(ThingDefOf.GoJuice, settings.goJuiceCost);
-            DestroyItems(ThingDefOf.MedicineIndustrial, settings.medicineCost);
-            DestroyItems(ThingDefOf.ComponentIndustrial, settings.componentCost);
+            ConsumeThings(ThingDefOf.GoJuice, settings.goJuiceCost);
+            ConsumeMedicine(settings.medicineCost);
+            ConsumeThings(ThingDefOf.ComponentIndustrial, settings.componentCost);
 
             return true;
         }
 
-        private int CountItems(ThingDef thingDef)
+        private int CountAvailableThings(ThingDef thingDef)
         {
-            return this.Map.listerThings.ThingsOfDef(thingDef).Where(t => !t.IsForbidden(Faction.OfPlayer)).Sum(t => t.stackCount);
+            if (this.Map == null) return 0;
+            return this.Map.listerThings.ThingsOfDef(thingDef)
+                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
+                .Sum(t => t.stackCount);
         }
 
-        private void DestroyItems(ThingDef thingDef, int count)
+        private int CountAvailableMedicine()
         {
-            if (count <= 0) return;
-            List<Thing> things = this.Map.listerThings.ThingsOfDef(thingDef).Where(t => !t.IsForbidden(Faction.OfPlayer)).ToList();
+            if (this.Map == null) return 0;
+
+            // Get all medicine items
+            var medicines = this.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
+                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
+                .Sum(t => t.stackCount);
+
+            return medicines;
+        }
+
+        private void ConsumeThings(ThingDef thingDef, int count)
+        {
+            if (count <= 0 || this.Map == null) return;
+
+            var things = this.Map.listerThings.ThingsOfDef(thingDef)
+                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
+                .OrderBy(t => t.Position.DistanceToSquared(this.Position))
+                .ToList();
+
             int remaining = count;
             foreach (var thing in things)
             {
                 int numToTake = Mathf.Min(remaining, thing.stackCount);
-                thing.SplitOff(numToTake).Destroy();
+                thing.SplitOff(numToTake).Destroy(DestroyMode.Vanish);
                 remaining -= numToTake;
                 if (remaining <= 0) break;
             }
         }
 
+        private void ConsumeMedicine(int count)
+        {
+            if (count <= 0 || this.Map == null) return;
+
+            // Get all medicine items, prioritize cheaper ones
+            var medicines = this.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
+                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
+                .OrderBy(t => t.MarketValue)
+                .ThenBy(t => t.Position.DistanceToSquared(this.Position))
+                .ToList();
+
+            int remaining = count;
+            foreach (var medicine in medicines)
+            {
+                int numToTake = Mathf.Min(remaining, medicine.stackCount);
+                medicine.SplitOff(numToTake).Destroy(DestroyMode.Vanish);
+                remaining -= numToTake;
+                if (remaining <= 0) break;
+            }
+        }
+
+        // ====================================================================
+        // UI and Gizmos
+        // ====================================================================
+
         public override string GetInspectString()
         {
             var sb = new System.Text.StringBuilder();
             sb.Append(base.GetInspectString());
-            if (IsRunning)
+
+            if (IsRunning && ContainedPawn != null)
             {
-                sb.AppendLine();
+                if (sb.Length > 0) sb.AppendLine();
                 sb.Append("HT.TransformationProgress".Translate(ProgressPercent.ToStringPercent()));
             }
+
             return sb.ToString();
         }
-        
+
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (var gizmo in base.GetGizmos())
@@ -360,43 +571,74 @@ namespace HussarTransformation
                 yield return gizmo;
             }
 
-            if (!IsRunning)
+            // Add "Begin Transformation" button when not running
+            if (!IsRunning && this.Map != null)
             {
                 yield return new Command_Action
                 {
                     defaultLabel = "HT.BeginTransformation".Translate(),
                     defaultDesc = "HT.BeginTransformationDesc".Translate(),
-                    icon = ContentFinder<Texture2D>.Get("UI/Commands/PodEject"),
+                    icon = ContentFinder<Texture2D>.Get("UI/Gizmos/OpenCryptosleepCasket", false),
                     action = () =>
                     {
                         var floatMenuOptions = new List<FloatMenuOption>();
                         foreach (var pawn in this.Map.mapPawns.FreeColonists)
                         {
-                            if (CanAcceptPawn(pawn).Accepted)
+                            var report = CanAcceptPawn(pawn);
+                            if (report.Accepted)
                             {
                                 floatMenuOptions.Add(new FloatMenuOption(pawn.LabelCap, () =>
                                 {
-                                    var job = JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("EnterHussarPod"), this);
+                                    var job = JobMaker.MakeJob(
+                                        DefDatabase<JobDef>.GetNamed("EnterHussarPod"), this);
                                     pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
                                 }));
                             }
+                            else
+                            {
+                                floatMenuOptions.Add(new FloatMenuOption(
+                                    pawn.LabelCap + ": " + report.Reason, null));
+                            }
                         }
+
                         if (floatMenuOptions.Any())
                         {
                             Find.WindowStack.Add(new FloatMenu(floatMenuOptions));
                         }
+                        else
+                        {
+                            Messages.Message("No suitable colonists available.",
+                                MessageTypeDefOf.RejectInput, false);
+                        }
+                    }
+                };
+            }
+
+            // Add "Cancel Transformation" button when running
+            if (IsRunning && ContainedPawn != null)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "Cancel Transformation",
+                    defaultDesc = "Cancel the ongoing transformation and eject the pawn.",
+                    icon = ContentFinder<Texture2D>.Get("UI/Commands/CancelLoad", false),
+                    action = () =>
+                    {
+                        CancelTransformation("manually cancelled");
                     }
                 };
             }
         }
     }
 
+    // ====================================================================
+    // 6. JOB DRIVER for entering the pod
+    // ====================================================================
 
-    // ====================================================================
-    // 3. JOB DRIVER for entering the pod
-    // ====================================================================
     public class JobDriver_EnterHussarPod : JobDriver
     {
+        private Building_HussarPod Pod => (Building_HussarPod)job.targetA.Thing;
+
         public override bool TryMakePreToilReservations(bool errorOnFailed)
         {
             return pawn.Reserve(job.targetA, job, 1, -1, null, errorOnFailed);
@@ -405,18 +647,23 @@ namespace HussarTransformation
         protected override IEnumerable<Toil> MakeNewToils()
         {
             this.FailOnDespawnedOrNull(TargetIndex.A);
+            this.FailOnBurningImmobile(TargetIndex.A);
+
+            // Go to the pod
             yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.InteractionCell);
-            
+
+            // Enter the pod
             Toil enter = new Toil();
             enter.initAction = () =>
             {
-                var pod = (Building_HussarPod)job.targetA.Thing;
-                pod.TryAcceptPawn(pawn);
+                var pod = Pod;
+                if (pod != null)
+                {
+                    pod.TryAcceptPawn(pawn);
+                }
             };
+            enter.defaultCompleteMode = ToilCompleteMode.Instant;
             yield return enter;
         }
     }
 }
-
-
-
