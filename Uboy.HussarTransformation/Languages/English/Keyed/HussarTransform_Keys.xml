@@ -41,5 +41,31 @@
 
    <!-- Power Consumption -->
    <W>{0} W</W>
+   
+   <!-- store materials  -->
+   <HT.MissingStoredMaterialsMessage>Insufficient stored materials. Supply more materials first.</HT.MissingStoredMaterialsMessage>
+   <HT.StoredMaterials>Stored Materials</HT.StoredMaterials>
+   <HT.Medicine>Medicine</HT.Medicine>
+   
+   <!-- supply materials -->
+   <HT.SupplyGoJuice>Supply Go-Juice</HT.SupplyGoJuice>
+   <HT.SupplyGoJuiceDesc>Order colonists to bring Go-Juice to this transformation pod.</HT.SupplyGoJuiceDesc>
+   <HT.SupplyMedicine>Supply Medicine</HT.SupplyMedicine>
+   <HT.SupplyMedicineDesc>Order colonists to bring medicine to this transformation pod.</HT.SupplyMedicineDesc>
+   <HT.SupplyComponents>Supply Components</HT.SupplyComponents>
+   <HT.SupplyComponentsDesc>Order colonists to bring components to this transformation pod.</HT.SupplyComponentsDesc>
+   
+   <!-- supply complete messages -->
+   <HT.MaterialSupplyCompleted>Materials supplied to hussar transformation pod.</HT.MaterialSupplyCompleted>
+   <HT.StorageCapacityFull>Storage capacity is full for this material type.</HT.StorageCapacityFull>
+   <HT.NoMaterialAvailable>No {0} available on the map.</HT.NoMaterialAvailable>
+   <HT.NoAvailableCarrier>No available colonist to carry materials.</HT.NoAvailableCarrier>
+   
+   <!-- Auto Supply Toggle -->
+   <HT.AutoSupplyEnabled>Auto Supply: ON</HT.AutoSupplyEnabled>
+   <HT.AutoSupplyDisabled>Auto Supply: OFF</HT.AutoSupplyDisabled>
+   <HT.AutoSupplyToggleDesc>Toggle automatic material supply by colonists.</HT.AutoSupplyToggleDesc>
+   <HT.AutoSupplyEnabledMessage>Auto supply enabled - colonists will bring materials automatically.</HT.AutoSupplyEnabledMessage>
+   <HT.AutoSupplyDisabledMessage>Auto supply disabled - colonists will not bring materials automatically.</HT.AutoSupplyDisabledMessage>
 </LanguageData>
 

@@ -6,4 +6,12 @@
     <reportString>entering hussar pod.</reportString>
     <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
   </JobDef>
+
+  <!-- 새로 추가: 재료 공급 Job -->
+  <JobDef>
+    <defName>SupplyHussarPodMaterials</defName>
+    <driverClass>HussarTransformation.JobDriver_SupplyMaterials</driverClass>
+    <reportString>supplying materials to hussar pod.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
 </Defs>

@@ -1,9 +1,11 @@
 ﻿using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using Verse.Noise;
 
 namespace HussarTransformation
 {
@@ -20,17 +22,6 @@ namespace HussarTransformation
         static XenotypeDefOf()
         {
             DefOfHelper.EnsureInitializedInCtor(typeof(XenotypeDefOf));
-        }
-    }
-
-    [DefOf]
-    public static class HediffDefOf
-    {
-        public static HediffDef GoJuiceAddiction;
-
-        static HediffDefOf()
-        {
-            DefOfHelper.EnsureInitializedInCtor(typeof(HediffDefOf));
         }
     }
 
@@ -202,7 +193,7 @@ namespace HussarTransformation
 
     // Building_HussarPod 클래스 수정 - Building 상속으로 변경
 
-    public class Building_HussarPod : Building, IThingHolder
+    public class Building_HussarPod : Building, IThingHolder, IHaulDestination
     {
         private CompPowerTrader powerComp;
         private float progress = 0f;
@@ -221,6 +212,366 @@ namespace HussarTransformation
 
         // Building_Casket처럼 HasAnyContents 구현
         public bool HasAnyContents => innerContainer.Count > 0;
+
+        // 새로 추가: 재료 저장 변수들
+        private int storedGoJuice = 0;
+        private int storedMedicine = 0;
+        private int storedComponents = 0;
+
+        // 재료 저장 용량 (설정 가능)
+        private const int MAX_STORED_GOJUICE = 5;
+        private const int MAX_STORED_MEDICINE = 5;
+        private const int MAX_STORED_COMPONENTS = 5;
+
+        public int MaxStoredGoJuice => MAX_STORED_GOJUICE;
+        public int MaxStoredMedicine => MAX_STORED_MEDICINE;
+        public int MaxStoredComponents => MAX_STORED_COMPONENTS;
+
+        // 새로 추가: 재료 관리 프로퍼티들
+        public int StoredGoJuice => storedGoJuice;
+        public int StoredMedicine => storedMedicine;
+        public int StoredComponents => storedComponents;
+
+        public bool HasEnoughMaterials =>
+            StoredGoJuice >= HussarTransformationMod.settings.goJuiceCost &&
+            StoredMedicine >= HussarTransformationMod.settings.medicineCost &&
+            StoredComponents >= HussarTransformationMod.settings.componentCost;
+
+        // 새로 추가: 재료 추가 메서드들
+        public bool TryAddGoJuice(int amount)
+        {
+            if (storedGoJuice + amount <= MAX_STORED_GOJUICE)
+            {
+                storedGoJuice += amount;
+                return true;
+            }
+            return false;
+        }
+
+        public bool TryAddMedicine(int amount)
+        {
+            if (storedMedicine + amount <= MAX_STORED_MEDICINE)
+            {
+                storedMedicine += amount;
+                return true;
+            }
+            return false;
+        }
+
+        public bool TryAddComponents(int amount)
+        {
+            if (storedComponents + amount <= MAX_STORED_COMPONENTS)
+            {
+                storedComponents += amount;
+                return true;
+            }
+            return false;
+        }
+
+        // 새로 추가: 재료 소모 메서드 (기존 ConsumeIngredients 대체)
+        private bool ConsumeStoredMaterials()
+        {
+            var settings = HussarTransformationMod.settings;
+
+            // 저장된 재료가 충분한지 확인
+            if (!HasEnoughMaterials) return false;
+
+            // 재료 소모
+            storedGoJuice -= settings.goJuiceCost;
+            storedMedicine -= settings.medicineCost;
+            storedComponents -= settings.componentCost;
+
+            return true;
+        }
+
+        // ====================================================================
+        // IHaulDestination 구현 - 바닐라 운반 시스템
+        // ====================================================================
+        public virtual bool ShouldProduceWorkNeeded()
+        {
+            // 저장소에 여유가 있으면 작업이 필요함을 알림
+            return SpaceRemainingFor(ThingDefOf.GoJuice) > 0 ||
+                   SpaceRemainingFor(ThingDefOf.ComponentIndustrial) > 0 ||
+                   DefDatabase<ThingDef>.AllDefs.Where(def => def.IsMedicine)
+                       .Any(medicineDef => SpaceRemainingFor(medicineDef) > 0);
+        }
+
+        public bool Accepts(Thing thing)
+        {
+            // 디버그 로그 추가
+/*            Log.Message($"[HussarPod DEBUG] Accepts() called - Thing: {thing?.def?.label ?? "null"}, " +
+                        $"StackCount: {thing?.stackCount ?? 0}");*/
+
+            if (thing == null)
+            {
+                //Log.Message($"[HussarPod DEBUG] Accepts() returning FALSE - Thing is null");
+                return false;
+            }
+
+            // 자동공급 설정과 관계없이 저장 용량만 확인
+            // (자동공급 제어는 HaulDestinationEnabled에서 처리)
+            if (thing.def == ThingDefOf.GoJuice && StoredGoJuice < MAX_STORED_GOJUICE)
+            {
+                /*
+                  Log.Message($"[HussarPod DEBUG] Accepts() returning TRUE - Go-Juice accepted " +
+                            $"(Current: {StoredGoJuice}/{MAX_STORED_GOJUICE})");
+                */
+                return true;
+            }
+            if (thing.def.IsMedicine && StoredMedicine < MAX_STORED_MEDICINE)
+            {
+                /*
+                Log.Message($"[HussarPod DEBUG] Accepts() returning TRUE - Medicine accepted " +
+                            $"(Current: {StoredMedicine}/{MAX_STORED_MEDICINE})");
+                */
+                return true;
+            }
+            if (thing.def == ThingDefOf.ComponentIndustrial && StoredComponents < MAX_STORED_COMPONENTS)
+            {
+/*                Log.Message($"[HussarPod DEBUG] Accepts() returning TRUE - Components accepted " +
+                            $"(Current: {StoredComponents}/{MAX_STORED_COMPONENTS})");*/
+                return true;
+            }
+
+            //Log.Message($"[HussarPod DEBUG] Accepts() returning FALSE - No matching condition");
+            return false;
+        }
+
+/*        public bool TryAcceptHaulable(Thing thing, Pawn hauler)
+        {
+            Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() called - Thing: {thing?.def?.label ?? "null"}, " +
+                        $"StackCount: {thing?.stackCount ?? 0}, " +
+                        $"Hauler: {hauler?.LabelShort ?? "null"}");
+
+            if (!Accepts(thing))
+            {
+                Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - Accepts() returned false");
+                return false;
+            }
+
+            // SpaceRemainingFor로 실제 수용 가능한 양 확인
+            int spaceRemaining = SpaceRemainingFor(thing.def);
+            if (spaceRemaining <= 0)
+            {
+                Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - No space remaining");
+                return false;
+            }
+
+            // 실제 수용할 양 계산
+            int amountToAccept = Math.Min(thing.stackCount, spaceRemaining);
+            Log.Message($"[HussarPod DEBUG] Calculated amountToAccept: {amountToAccept} (stackCount: {thing.stackCount}, spaceRemaining: {spaceRemaining})");
+
+            if (amountToAccept <= 0)
+            {
+                Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - Nothing to accept");
+                return false;
+            }
+
+            // 재료별 처리
+            bool success = false;
+            string materialName = "";
+
+            if (thing.def == ThingDefOf.GoJuice)
+            {
+                if (TryAddGoJuice(amountToAccept))
+                {
+                    success = true;
+                    materialName = "Go-Juice";
+                }
+            }
+            else if (thing.def.IsMedicine)
+            {
+                if (TryAddMedicine(amountToAccept))
+                {
+                    success = true;
+                    materialName = thing.def.label;
+                }
+            }
+            else if (thing.def == ThingDefOf.ComponentIndustrial)
+            {
+                if (TryAddComponents(amountToAccept))
+                {
+                    success = true;
+                    materialName = "Components";
+                }
+            }
+
+            if (success)
+            {
+                // 성공한 경우 아이템 처리
+                if (amountToAccept >= thing.stackCount)
+                {
+                    // 전체 스택을 수용하는 경우
+                    Log.Message($"[HussarPod DEBUG] Full acceptance - Destroying entire stack: {thing.stackCount}");
+                    thing.Destroy(DestroyMode.Vanish);
+                    Messages.Message($"Added {amountToAccept} {materialName} to transformation pod",
+                                   this, MessageTypeDefOf.TaskCompletion);
+                    return true;
+                }
+                else
+                {
+                    // 일부만 수용하는 경우
+                    Log.Message($"[HussarPod DEBUG] Partial acceptance - Splitting: accept {amountToAccept}, leave {thing.stackCount - amountToAccept}");
+                    Thing acceptedPortion = thing.SplitOff(amountToAccept);
+                    acceptedPortion.Destroy(DestroyMode.Vanish);
+
+                    Messages.Message($"Added {amountToAccept} {materialName} to transformation pod (storage limit reached)",
+                                   this, MessageTypeDefOf.TaskCompletion);
+
+                    // 여기서 false를 반환하여 바닐라 운반 시스템이 나머지를 처리하도록 함
+                    //Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - Partial acceptance, let vanilla handle remainder");
+                    return false;
+                }
+            }
+
+            //Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - Storage failed");
+            return false;
+        }*/
+
+
+        // 또는 SpaceRemainingFor 메서드 구현을 통해 올바른 양만 운반하도록 안내
+        public int SpaceRemainingFor(ThingDef thingDef)
+        {
+            int remaining = 0;
+            if (thingDef == ThingDefOf.GoJuice)
+                remaining = MAX_STORED_GOJUICE - StoredGoJuice;
+            else if (thingDef.IsMedicine)
+                remaining = MAX_STORED_MEDICINE - StoredMedicine;
+            else if (thingDef == ThingDefOf.ComponentIndustrial)
+                remaining = MAX_STORED_COMPONENTS - StoredComponents;
+
+            //Log.Message($"[HussarPod DEBUG] SpaceRemainingFor({thingDef?.label}) called - returning {remaining}");
+            return remaining;
+        }
+
+
+        // ====================================================================
+        // IHaulDestination & IStoreSettingsParent 인터페이스 구현 추가
+        // ====================================================================
+
+        private StorageSettings storageSettings;
+
+        // IHaulDestination.HaulDestinationEnabled 구현
+        public bool HaulDestinationEnabled
+        {
+            get
+            {
+                return false; // 자동공급 설정에 따라 반환
+            }
+        }
+
+        // IStoreSettingsParent 인터페이스 구현
+        public StorageSettings GetStoreSettings()
+        {
+            if (storageSettings == null)
+            {
+                storageSettings = new StorageSettings(this);
+                // 3가지 재료만 허용하도록 설정
+                storageSettings.filter.SetDisallowAll();
+                storageSettings.filter.SetAllow(ThingDefOf.GoJuice, true);
+                storageSettings.filter.SetAllow(ThingDefOf.ComponentIndustrial, true);
+
+                // 모든 의약품 허용
+                foreach (ThingDef medicineDef in DefDatabase<ThingDef>.AllDefs.Where(def => def.IsMedicine))
+                {
+                    storageSettings.filter.SetAllow(medicineDef, true);
+                }
+            }
+            return storageSettings;
+        }
+
+        public StorageSettings GetParentStoreSettings()
+        {
+            return null; // 부모 저장소 설정 없음
+        }
+
+        public void Notify_SettingsChanged()
+        {
+            // 저장소 설정 변경 시 호출되는 메서드 (현재는 아무 작업 안 함)
+        }
+
+        public bool StorageTabVisible => true; // 저장소 탭 표시 여부
+
+        // ====================================================================
+        // 우클릭 메뉴 추가 (선택사항 - 더 명확한 UX를 위해)
+        // ====================================================================
+
+        public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
+        {
+            foreach (var option in base.GetFloatMenuOptions(selPawn))
+            {
+                yield return option;
+            }
+
+            if (!selPawn.CanReach(this, PathEndMode.InteractionCell, Danger.Deadly))
+            {
+                yield break;
+            }
+
+            // Go-Juice 운반 옵션
+            if (StoredGoJuice < MAX_STORED_GOJUICE)
+            {
+                var goJuice = selPawn.Map.listerThings.ThingsOfDef(ThingDefOf.GoJuice)
+                    .Where(t => !t.IsForbidden(selPawn.Faction) &&
+                               selPawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
+                    .OrderBy(t => t.Position.DistanceToSquared(selPawn.Position))
+                    .FirstOrDefault();
+
+                if (goJuice != null)
+                {
+                    int canHaul = Math.Min(goJuice.stackCount, MAX_STORED_GOJUICE - StoredGoJuice);
+                    yield return new FloatMenuOption($"Haul {canHaul} {ThingDefOf.GoJuice.label} to {this.Label} ({StoredGoJuice}/{MAX_STORED_GOJUICE})", () =>
+                    {
+                        var job = JobMaker.MakeJob(JobDefOf.HaulToContainer, goJuice, this);
+                        job.count = canHaul; // 실제 필요한 만큼만 운반
+                        selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                    });
+                }
+            }
+
+            // Medicine 운반 옵션
+            if (StoredMedicine < MAX_STORED_MEDICINE)
+            {
+                var medicine = selPawn.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
+                    .Where(t => !t.IsForbidden(selPawn.Faction) &&
+                               selPawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
+                    .OrderBy(t => t.MarketValue)
+                    .ThenBy(t => t.Position.DistanceToSquared(selPawn.Position))
+                    .FirstOrDefault();
+
+                if (medicine != null)
+                {
+                    int canHaul = Math.Min(medicine.stackCount, MAX_STORED_MEDICINE - StoredMedicine);
+                    yield return new FloatMenuOption($"Haul {canHaul} {medicine.def.label} to {this.Label} ({StoredMedicine}/{MAX_STORED_MEDICINE})", () =>
+                    {
+                        var job = JobMaker.MakeJob(JobDefOf.HaulToContainer, medicine, this);
+                        job.count = canHaul; // 실제 필요한 만큼만 운반
+                        selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                    });
+                }
+            }
+
+            // Components 운반 옵션
+            if (StoredComponents < MAX_STORED_COMPONENTS)
+            {
+                var components = selPawn.Map.listerThings.ThingsOfDef(ThingDefOf.ComponentIndustrial)
+                    .Where(t => !t.IsForbidden(selPawn.Faction) &&
+                               selPawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
+                    .OrderBy(t => t.Position.DistanceToSquared(selPawn.Position))
+                    .FirstOrDefault();
+
+                if (components != null)
+                {
+                    int canHaul = Math.Min(components.stackCount, MAX_STORED_COMPONENTS - StoredComponents);
+                    yield return new FloatMenuOption($"Haul {canHaul} components to {this.Label} ({StoredComponents}/{MAX_STORED_COMPONENTS})", () =>
+                    {
+                        var job = JobMaker.MakeJob(JobDefOf.HaulToContainer, components, this);
+                        job.count = canHaul; // 실제 필요한 만큼만 운반
+                        selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                    });
+                }
+            }
+        }
 
         // ====================================================================
         // Initialization
@@ -256,17 +607,6 @@ namespace HussarTransformation
         }
 
         // ====================================================================
-        // Save/Load
-        // ====================================================================
-
-        public override void ExposeData()
-        {
-            base.ExposeData();
-            Scribe_Values.Look(ref progress, "progress", 0f);
-            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
-        }
-
-        // ====================================================================
         // Main Update Loop - 이제 확실히 작동할 것
         // ====================================================================
 
@@ -274,15 +614,105 @@ namespace HussarTransformation
         {
             base.Tick();
 
-            // 디버그 로그
-            /*
-            if (Find.TickManager.TicksGame % 60 == 0) // 1초마다만 로그
+            // innerContainer 내의 아이템들을 저장소로 자동 변환
+            if (innerContainer.Count > 0)
             {
-                string containedPawnName = ContainedPawn != null ? ContainedPawn.LabelShort : "None";
-                string containerInfo = innerContainer != null ? $"Count: {innerContainer.Count}" : "null";
-                Log.Message($"[HussarPod] Tick | ContainedPawn: {containedPawnName}, Container: {containerInfo}, Progress: {progress}, IsRunning: {IsRunning}");
+                List<Thing> itemsToProcess = new List<Thing>();
+
+                foreach (Thing thing in innerContainer)
+                {
+                    if (!(thing is Pawn)) // Pawn이 아닌 아이템들만 처리
+                    {
+                        itemsToProcess.Add(thing);
+                    }
+                }
+
+                // 아이템들을 하나씩 처리하되, 처리 후 즉시 컨테이너에서 제거
+                for (int i = itemsToProcess.Count - 1; i >= 0; i--) // 역순으로 처리
+                {
+                    Thing item = itemsToProcess[i];
+
+                    Log.Message($"[HussarPod DEBUG] Processing container item: {item.def.label}, StackCount: {item.stackCount}");
+
+                    // 저장 가능한 양 계산
+                    int canStore = 0;
+                    if (item.def == ThingDefOf.GoJuice)
+                        canStore = Math.Min(item.stackCount, MAX_STORED_GOJUICE - StoredGoJuice);
+                    else if (item.def.IsMedicine)
+                        canStore = Math.Min(item.stackCount, MAX_STORED_MEDICINE - StoredMedicine);
+                    else if (item.def == ThingDefOf.ComponentIndustrial)
+                        canStore = Math.Min(item.stackCount, MAX_STORED_COMPONENTS - StoredComponents);
+
+                    Log.Message($"[HussarPod DEBUG] Can store: {canStore} of {item.stackCount}");
+
+                    if (canStore > 0)
+                    {
+                        // 저장 처리
+                        bool stored = false;
+                        string materialName = "";
+
+                        if (item.def == ThingDefOf.GoJuice && TryAddGoJuice(canStore))
+                        {
+                            stored = true;
+                            materialName = "Go-Juice";
+                        }
+                        else if (item.def.IsMedicine && TryAddMedicine(canStore))
+                        {
+                            stored = true;
+                            materialName = item.def.label;
+                        }
+                        else if (item.def == ThingDefOf.ComponentIndustrial && TryAddComponents(canStore))
+                        {
+                            stored = true;
+                            materialName = "Components";
+                        }
+
+                        if (stored)
+                        {
+                            Log.Message($"[HussarPod DEBUG] Successfully stored {canStore} {materialName}");
+
+                            if (canStore >= item.stackCount)
+                            {
+                                // 전체 아이템 저장 - 컨테이너에서 제거
+                                innerContainer.Remove(item);
+                                Log.Message($"[HussarPod DEBUG] Removed entire item from container");
+                            }
+                            else
+                            {
+                                // 일부만 저장 - 스택 크기 줄이기
+                                item.stackCount -= canStore;
+                                Log.Message($"[HussarPod DEBUG] Reduced item stack to {item.stackCount}");
+
+                                // 나머지를 맵에 드롭
+                                Thing remainder = item.SplitOff(item.stackCount);
+                                innerContainer.Remove(item); // 원본 제거
+
+                                // 나머지를 근처에 드롭
+                                if (!GenPlace.TryPlaceThing(remainder, this.InteractionCell, this.Map, ThingPlaceMode.Near))
+                                {
+                                    GenPlace.TryPlaceThing(remainder, this.Position, this.Map, ThingPlaceMode.Near);
+                                }
+                                Log.Message($"[HussarPod DEBUG] Dropped remainder {remainder.stackCount} items near pod");
+                            }
+
+                            Messages.Message($"Added {canStore} {materialName} to transformation pod",
+                                           this, MessageTypeDefOf.TaskCompletion);
+                        }
+                    }
+                    else
+                    {
+                        // 저장할 수 없음 - 아이템을 맵에 드롭하고 컨테이너에서 제거
+                        Log.Message($"[HussarPod DEBUG] Cannot store {item.def.label} - dropping to ground");
+                        innerContainer.Remove(item);
+
+                        if (!GenPlace.TryPlaceThing(item, this.InteractionCell, this.Map, ThingPlaceMode.Near))
+                        {
+                            GenPlace.TryPlaceThing(item, this.Position, this.Map, ThingPlaceMode.Near);
+                        }
+                    }
+                }
             }
-            */
+
 
             // Update power consumption based on state
             if (powerComp != null)
@@ -338,13 +768,6 @@ namespace HussarTransformation
             // Progress the transformation
             progress += 1f;
 
-            // 진행 상황 로그 (10초마다)
-            /*
-            if (Find.TickManager.TicksGame % 600 == 0)
-            {
-                Log.Message($"[HussarPod] Progress updated: {progress}, Percent: {ProgressPercent:P2}");
-            }
-            */
 
             // Check if transformation is complete
             if (ProgressPercent >= 1f)
@@ -366,14 +789,15 @@ namespace HussarTransformation
             return false;
         }
 
+        // TryAcceptPawn 수정 (기존 ConsumeIngredients → ConsumeStoredMaterials)
         private bool TryAcceptPawn(Pawn pawn)
         {
             if (!CanAcceptPawn(pawn).Accepted) return false;
 
-            // Consume ingredients
-            if (!ConsumeIngredients())
+            // 저장된 재료로 변경
+            if (!ConsumeStoredMaterials())
             {
-                Messages.Message("HT.MissingIngredientsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
+                Messages.Message("HT.MissingStoredMaterialsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
                 return false;
             }
 
@@ -388,13 +812,6 @@ namespace HussarTransformation
             if (success)
             {
                 progress = 0f;
-
-                // Pawn의 faction 정보 업데이트 (Building_Casket 방식)
-                if (pawn.Faction != null && pawn.Faction.IsPlayer)
-                {
-                    // contentsKnown = true; // 필요시 추가
-                }
-
                 Log.Message($"[HussarPod] Pawn {pawn.LabelShort} accepted, Container count: {innerContainer?.Count ?? 0}");
             }
 
@@ -454,13 +871,6 @@ namespace HussarTransformation
             if (pawn.genes != null)
             {
                 pawn.genes.SetXenotype(XenotypeDefOf.Hussar);
-            }
-
-            // Add Go-Juice dependency
-            if (pawn.health != null)
-            {
-                Hediff hediff = HediffMaker.MakeHediff(HediffDefOf.GoJuiceAddiction, pawn);
-                pawn.health.AddHediff(hediff);
             }
 
             Messages.Message("HT.TransformationCompleteMessage".Translate(pawn.LabelShortCap),
@@ -530,109 +940,52 @@ namespace HussarTransformation
         }
 
         // ====================================================================
-        // 나머지 메서드들은 기존과 동일 (ConsumeIngredients, GetInspectString, GetGizmos 등)
+        // ExposeData 메서드 수정 (저장소 설정 저장/로드)
         // ====================================================================
 
-        private bool ConsumeIngredients()
+        public override void ExposeData()
         {
-            var settings = HussarTransformationMod.settings;
-            var map = this.Map;
-            if (map == null) return false;
+            base.ExposeData();
+            Scribe_Values.Look(ref progress, "progress", 0f);
+            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
+            Scribe_Deep.Look(ref storageSettings, "storageSettings", this);
 
-            // Check Go-Juice
-            int goJuiceAvailable = CountAvailableThings(ThingDefOf.GoJuice);
-            if (goJuiceAvailable < settings.goJuiceCost)
-                return false;
-
-            // Check Medicine (any type)
-            int medicineAvailable = CountAvailableMedicine();
-            if (medicineAvailable < settings.medicineCost)
-                return false;
-
-            // Check Components
-            int componentsAvailable = CountAvailableThings(ThingDefOf.ComponentIndustrial);
-            if (componentsAvailable < settings.componentCost)
-                return false;
-
-            // Consume ingredients
-            ConsumeThings(ThingDefOf.GoJuice, settings.goJuiceCost);
-            ConsumeMedicine(settings.medicineCost);
-            ConsumeThings(ThingDefOf.ComponentIndustrial, settings.componentCost);
-
-            return true;
+            // 재료 저장 정보
+            Scribe_Values.Look(ref storedGoJuice, "storedGoJuice", 0);
+            Scribe_Values.Look(ref storedMedicine, "storedMedicine", 0);
+            Scribe_Values.Look(ref storedComponents, "storedComponents", 0);
         }
+        // ====================================================================
+        // GetInspectString, GetGizmos, etc...
+        // ====================================================================
 
-        private int CountAvailableThings(ThingDef thingDef)
-        {
-            if (this.Map == null) return 0;
-            return this.Map.listerThings.ThingsOfDef(thingDef)
-                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
-                .Sum(t => t.stackCount);
-        }
-
-        private int CountAvailableMedicine()
-        {
-            if (this.Map == null) return 0;
-
-            var medicines = this.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
-                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
-                .Sum(t => t.stackCount);
-
-            return medicines;
-        }
-
-        private void ConsumeThings(ThingDef thingDef, int count)
-        {
-            if (count <= 0 || this.Map == null) return;
-
-            var things = this.Map.listerThings.ThingsOfDef(thingDef)
-                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
-                .OrderBy(t => t.Position.DistanceToSquared(this.Position))
-                .ToList();
-
-            int remaining = count;
-            foreach (var thing in things)
-            {
-                int numToTake = Mathf.Min(remaining, thing.stackCount);
-                thing.SplitOff(numToTake).Destroy(DestroyMode.Vanish);
-                remaining -= numToTake;
-                if (remaining <= 0) break;
-            }
-        }
-
-        private void ConsumeMedicine(int count)
-        {
-            if (count <= 0 || this.Map == null) return;
-
-            var medicines = this.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
-                .Where(t => !t.IsForbidden(Faction.OfPlayer) && t.Spawned)
-                .OrderBy(t => t.MarketValue)
-                .ThenBy(t => t.Position.DistanceToSquared(this.Position))
-                .ToList();
-
-            int remaining = count;
-            foreach (var medicine in medicines)
-            {
-                int numToTake = Mathf.Min(remaining, medicine.stackCount);
-                medicine.SplitOff(numToTake).Destroy(DestroyMode.Vanish);
-                remaining -= numToTake;
-                if (remaining <= 0) break;
-            }
-        }
-
+        // GetInspectString 수정 (재료 저장 상태 표시)
         public override string GetInspectString()
         {
             var sb = new System.Text.StringBuilder();
             sb.Append(base.GetInspectString());
 
+            // 빈 줄 제거를 위해 조건부 AppendLine 사용
+            if (sb.Length > 0)
+            {
+                sb.Append("\n"); // AppendLine() 대신 "\n" 사용
+            }
             if (IsRunning && ContainedPawn != null)
             {
-                if (sb.Length > 0) sb.AppendLine();
                 sb.Append("HT.TransformationProgress".Translate(ProgressPercent.ToStringPercent()));
+                sb.Append("\n");
             }
+            sb.Append("HT.StoredMaterials".Translate() + ":");
+            sb.Append($"\n  {ThingDefOf.GoJuice.LabelCap}: {StoredGoJuice}/{MAX_STORED_GOJUICE}");
+            sb.Append($"\n  {"HT.Medicine".Translate()}: {StoredMedicine}/{MAX_STORED_MEDICINE}");
+            sb.Append($"\n  {ThingDefOf.ComponentIndustrial.LabelCap}: {StoredComponents}/{MAX_STORED_COMPONENTS}");
 
             return sb.ToString();
         }
+
+        // ====================================================================
+        // GetGizmos - 사용자정의 버튼 추가
+        // ====================================================================
 
         public override IEnumerable<Gizmo> GetGizmos()
         {
@@ -641,14 +994,14 @@ namespace HussarTransformation
                 yield return gizmo;
             }
 
-            // Add "Begin Transformation" button when not running
-            if (!IsRunning && this.Map != null)
+            // Begin Transformation 버튼
+            if (!IsRunning && HasEnoughMaterials && this.Map != null)
             {
                 yield return new Command_Action
                 {
                     defaultLabel = "HT.BeginTransformation".Translate(),
                     defaultDesc = "HT.BeginTransformationDesc".Translate(),
-                    icon = ContentFinder<Texture2D>.Get("UI/Gizmos/OpenCryptosleepCasket", false),
+                    icon = ContentFinder<Texture2D>.Get("UI/Icons/Xenotypes/Hussar", false),
                     action = () =>
                     {
                         var floatMenuOptions = new List<FloatMenuOption>();
@@ -684,14 +1037,14 @@ namespace HussarTransformation
                 };
             }
 
-            // Add "Cancel Transformation" button when running
+            // Cancel 버튼
             if (IsRunning && ContainedPawn != null)
             {
                 yield return new Command_Action
                 {
                     defaultLabel = "Cancel Transformation",
                     defaultDesc = "Cancel the ongoing transformation and eject the pawn.",
-                    icon = ContentFinder<Texture2D>.Get("UI/Commands/CancelLoad", false),
+                    icon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel", false),
                     action = () =>
                     {
                         CancelTransformation("manually cancelled");
@@ -702,9 +1055,8 @@ namespace HussarTransformation
     }
 
     // ====================================================================
-    // 6. JOB DRIVER for entering the pod
+    // 6. JOB DRIVER for entering the pod & supplying materials
     // ====================================================================
-
     public class JobDriver_EnterHussarPod : JobDriver
     {
         private Building_HussarPod Pod => (Building_HussarPod)job.targetA.Thing;
@@ -735,6 +1087,177 @@ namespace HussarTransformation
             };
             enter.defaultCompleteMode = ToilCompleteMode.Instant;
             yield return enter;
+        }
+    }
+
+    public class JobDriver_SupplyMaterials : JobDriver
+    {
+        private Building_HussarPod Pod => (Building_HussarPod)job.targetA.Thing;
+        private Thing Material => job.targetB.Thing;
+
+        public override bool TryMakePreToilReservations(bool errorOnFailed)
+        {
+            return pawn.Reserve(job.targetA, job, 1, -1, null, errorOnFailed) &&
+                    pawn.Reserve(job.targetB, job, 1, -1, null, errorOnFailed);
+        }
+
+        protected override IEnumerable<Toil> MakeNewToils()
+        {
+            this.FailOnDespawnedOrNull(TargetIndex.A);
+            this.FailOnDespawnedOrNull(TargetIndex.B);
+            this.FailOnBurningImmobile(TargetIndex.A);
+
+            // 재료로 이동
+            yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.ClosestTouch);
+
+            // 디버그 로그 - 예약 체크 수정
+            Toil checkMaterial = new Toil();
+            checkMaterial.initAction = () =>
+            {
+                var material = Material;
+                bool isReserved = material != null ?
+                    this.Map.reservationManager.IsReservedByAnyoneOf(material, Faction.OfPlayer) : false; // 올바른 방법
+
+                Log.Message($"[HussarPod] Checking material: {material?.def?.label}, StackCount: {material?.stackCount}, Forbidden: {material?.IsForbidden(Faction.OfPlayer)}, Reserved: {isReserved}");
+            };
+            checkMaterial.defaultCompleteMode = ToilCompleteMode.Instant;
+            yield return checkMaterial;
+
+            // 재료 집기
+            //yield return Toils_Haul.StartCarryThing(TargetIndex.B, false, false, false);
+            // Toils_Haul.StartCarryThing 대신 직접 구현
+            Toil pickupMaterial = new Toil();
+            pickupMaterial.initAction = () =>
+            {
+                var material = Material;
+
+                // 이미 들고 있는 것이 있으면 먼저 처리
+                if (pawn.carryTracker.CarriedThing != null)
+                {
+                    Log.Message($"[HussarPod] Pawn already carrying: {pawn.carryTracker.CarriedThing.def.label}");
+                    // 이미 들고 있는 것을 바닥에 놓기
+                    Thing carriedThing = pawn.carryTracker.CarriedThing;
+                    pawn.carryTracker.TryDropCarriedThing(pawn.Position, ThingPlaceMode.Near, out Thing droppedThing);
+                }
+
+                if (material != null && material.Spawned)
+                {
+                    int countToTake = Math.Min(job.count, material.stackCount);
+                    Thing takenThing = material.SplitOff(countToTake);
+
+                    if (pawn.carryTracker.TryStartCarry(takenThing))
+                    {
+                        Log.Message($"[HussarPod] Successfully picked up {countToTake} {takenThing.def.label}");
+                    }
+                    else
+                    {
+                        Log.Error($"[HussarPod] Failed to start carrying {takenThing.def.label}");
+                        GenPlace.TryPlaceThing(takenThing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
+                    }
+                }
+            };
+            pickupMaterial.defaultCompleteMode = ToilCompleteMode.Instant;
+            yield return pickupMaterial;
+
+            // 포드로 이동
+            yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.InteractionCell);
+
+            // 재료 넣기
+            Toil supplyMaterial = new Toil();
+            supplyMaterial.initAction = () =>
+            {
+                var material = pawn.carryTracker.CarriedThing;
+                var pod = Pod;
+
+                if (material != null && pod != null)
+                {
+                    bool success = false;
+                    int amount = material.stackCount;
+                    string materialName = "";
+
+                    // 재료 타입별 처리
+                    if (material.def == ThingDefOf.GoJuice)
+                    {
+                        int canAccept = Mathf.Min(amount, pod.MaxStoredGoJuice - pod.StoredGoJuice);
+                        if (canAccept > 0)
+                        {
+                            success = pod.TryAddGoJuice(canAccept);
+                            if (success)
+                            {
+                                materialName = "Go-Juice";
+                                if (canAccept < amount)
+                                {
+                                    // 일부만 사용하고 나머지는 반환
+                                    Thing remainder = material.SplitOff(canAccept);
+                                    remainder.Destroy();
+                                }
+                                else
+                                {
+                                    material.Destroy();
+                                }
+                            }
+                        }
+                    }
+                    else if (material.def.IsMedicine)
+                    {
+                        int canAccept = Mathf.Min(amount, pod.MaxStoredMedicine - pod.StoredMedicine);
+                        if (canAccept > 0)
+                        {
+                            success = pod.TryAddMedicine(canAccept);
+                            if (success)
+                            {
+                                materialName = "Medicine";
+                                if (canAccept < amount)
+                                {
+                                    Thing remainder = material.SplitOff(canAccept);
+                                    remainder.Destroy();
+                                }
+                                else
+                                {
+                                    material.Destroy();
+                                }
+                            }
+                        }
+                    }
+                    else if (material.def == ThingDefOf.ComponentIndustrial)
+                    {
+                        int canAccept = Mathf.Min(amount, pod.MaxStoredComponents - pod.StoredComponents);
+                        if (canAccept > 0)
+                        {
+                            success = pod.TryAddComponents(canAccept);
+                            if (success)
+                            {
+                                materialName = "Components";
+                                if (canAccept < amount)
+                                {
+                                    Thing remainder = material.SplitOff(canAccept);
+                                    remainder.Destroy();
+                                }
+                                else
+                                {
+                                    material.Destroy();
+                                }
+                            }
+                        }
+                    }
+
+                    if (success)
+                    {
+                        Messages.Message($"Added {materialName} to hussar pod",
+                            pod, MessageTypeDefOf.TaskCompletion);
+                    }
+                    else
+                    {
+                        Messages.Message($"Could not add {materialName} - storage full",
+                            pod, MessageTypeDefOf.RejectInput);
+
+                        // 실패 시 재료를 바닥에 떨어뜨리기
+                        GenPlace.TryPlaceThing(material, pawn.Position, pawn.Map, ThingPlaceMode.Near);
+                    }
+                }
+            };
+            supplyMaterial.defaultCompleteMode = ToilCompleteMode.Instant;
+            yield return supplyMaterial;
         }
     }
 }
