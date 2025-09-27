@@ -834,6 +834,18 @@ namespace HussarTransformation
                 !HussarTransformationMod.settings.allowOtherXenotypes)
                 return new AcceptanceReport("HT.AcceptanceReport_NotBaseliner".Translate());
 
+            // 이미 다른 포드에서 변형 중인지 체크
+            if (this.Map != null)
+            {
+                foreach (var building in this.Map.listerBuildings.AllBuildingsColonistOfClass<Building_HussarPod>())
+                {
+                    if (building != this && building.ContainedPawn == pawn)
+                    {
+                        return new AcceptanceReport("HT.AcceptanceReport_AlreadyInTransformation".Translate());
+                    }
+                }
+            }
+
             if (HasAnyContents)
                 return new AcceptanceReport("HT.AcceptanceReport_Occupied".Translate());
 
@@ -1012,6 +1024,23 @@ namespace HussarTransformation
                             {
                                 floatMenuOptions.Add(new FloatMenuOption(pawn.LabelCap, () =>
                                 {
+                                    // 실행 시점 재검증
+                                    var currentReport = CanAcceptPawn(pawn);
+                                    if (!currentReport.Accepted)
+                                    {
+                                        Messages.Message($"{pawn.LabelShortCap}: {currentReport.Reason}",
+                                            MessageTypeDefOf.RejectInput, false);
+                                        return;
+                                    }
+
+                                    // 추가 안전 검사: 정착민이 맵에 있는지 확인
+                                    if (!pawn.Spawned || pawn.Map != this.Map)
+                                    {
+                                        Messages.Message($"{pawn.LabelShortCap} is no longer available.",
+                                            MessageTypeDefOf.RejectInput, false);
+                                        return;
+                                    }
+
                                     var job = JobMaker.MakeJob(
                                         DefDatabase<JobDef>.GetNamed("EnterHussarPod"), this);
                                     pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);

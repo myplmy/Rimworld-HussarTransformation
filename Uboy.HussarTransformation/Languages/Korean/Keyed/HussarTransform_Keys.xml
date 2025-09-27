@@ -38,8 +38,10 @@
     <HT.AcceptanceReport_NotBaseliner>베이스라이너여야 합니다 (모드 설정에서 변경 가능).</HT.AcceptanceReport_NotBaseliner>
     <HT.AcceptanceReport_Occupied>변형기가 이미 사용 중입니다.</HT.AcceptanceReport_Occupied>
     <HT.AcceptanceReport_NoPower>변형기에 전력이 공급되지 않습니다.</HT.AcceptanceReport_NoPower>
+    <HT.AcceptanceReport_AlreadyInTransformation>이미 다른 변형기에서 변형 중입니다.</HT.AcceptanceReport_AlreadyInTransformation>
 
-   <!-- Power Consumption -->
+
+  <!-- Power Consumption -->
    <W>{0} W</W>
    
    <!-- 재료 저장 시스템 관련 -->
