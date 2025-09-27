@@ -50,9 +50,25 @@
         <shortCircuitInRain>false</shortCircuitInRain>
       </li>
       <li Class="CompProperties_Flickable"/>
+      <li Class="CompProperties_AssignableToPawn">
+        <drawAssignmentOverlay>false</drawAssignmentOverlay>
+      </li>
     </comps>
     <building>
       <canPlaceOverWall>false</canPlaceOverWall>
+      <!-- ===== 추가: 침대 관련 설정 ===== -->
+      <bed_showSleeperBody>false</bed_showSleeperBody>
+      <bed_humanlike>true</bed_humanlike>
+      <bed_maxBodySize>99</bed_maxBodySize>
+      <bed_canBeMedical>false</bed_canBeMedical>
+      <bed_DisplayOwnerType>false</bed_DisplayOwnerType>
+      <bed_DisplayOwnersInInspectString>false</bed_DisplayOwnersInInspectString>
+      <bed_countsForBedroomOrBarracks>false</bed_countsForBedroomOrBarracks>
+      
+      <buildingTags>
+        <li>Bed</li>
+      </buildingTags>
+      
       <ai_chillDestination>false</ai_chillDestination>
       <isInert>true</isInert>
     </building>

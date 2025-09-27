@@ -37,6 +37,10 @@ namespace HussarTransformation
         public int componentCost = 1;
         public bool consumeMedicineOnFailure = true;
         public int medicineConsumedOnFailure = 1;
+        public bool consumeGoJuiceOnFailure = false;
+        public int goJuiceConsumedOnFailure = 0;
+        public bool consumeComponentOnFailure = false;
+        public int componentConsumedOnFailure = 0;
         public float transformationDurationHours = 4f;
         public int powerConsumption = 200;
         public bool stopOnPowerLoss = true;
@@ -50,6 +54,10 @@ namespace HussarTransformation
             Scribe_Values.Look(ref componentCost, "componentCost", 1);
             Scribe_Values.Look(ref consumeMedicineOnFailure, "consumeMedicineOnFailure", true);
             Scribe_Values.Look(ref medicineConsumedOnFailure, "medicineConsumedOnFailure", 1);
+            Scribe_Values.Look(ref consumeGoJuiceOnFailure, "consumeMedicineOnFailure", false);
+            Scribe_Values.Look(ref goJuiceConsumedOnFailure, "goJuiceConsumedOnFailure", 0);
+            Scribe_Values.Look(ref consumeComponentOnFailure, "consumeComponentOnFailure", false);
+            Scribe_Values.Look(ref componentConsumedOnFailure, "componentConsumedOnFailure", 0);
             Scribe_Values.Look(ref transformationDurationHours, "transformationDurationHours", 4f);
             Scribe_Values.Look(ref powerConsumption, "powerConsumption", 200);
             Scribe_Values.Look(ref stopOnPowerLoss, "stopOnPowerLoss", true);
@@ -62,6 +70,14 @@ namespace HussarTransformation
             if (medicineConsumedOnFailure > medicineCost)
             {
                 medicineConsumedOnFailure = medicineCost;
+            }
+            if (goJuiceConsumedOnFailure > goJuiceCost)
+            {
+                goJuiceConsumedOnFailure = goJuiceCost;
+            }
+            if (componentConsumedOnFailure > componentCost)
+            {
+                componentConsumedOnFailure = componentCost;
             }
             goJuiceCost = Mathf.Clamp(goJuiceCost, 0, 99);
             medicineCost = Mathf.Clamp(medicineCost, 0, 99);
@@ -119,6 +135,26 @@ namespace HussarTransformation
                 string medicineFailureBuffer = settings.medicineConsumedOnFailure.ToString();
                 listingStandard.TextFieldNumericLabeled("        " + "HT.MedicineConsumedOnFailure".Translate(),
                     ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
+            }
+
+            listingStandard.CheckboxLabeled("    " + "HT.ConsumeGoJuiceOnFailure".Translate(),
+                ref settings.consumeGoJuiceOnFailure, "HT.ConsumeGoJuiceOnFailureTooltip".Translate());
+
+            if (settings.consumeGoJuiceOnFailure)
+            {
+                string goJuiceFailureBuffer = settings.goJuiceConsumedOnFailure.ToString();
+                listingStandard.TextFieldNumericLabeled("        " + "HT.GoJuiceConsumedOnFailure".Translate(),
+                    ref settings.goJuiceConsumedOnFailure, ref goJuiceFailureBuffer, 0, settings.goJuiceCost);
+            }
+
+            listingStandard.CheckboxLabeled("    " + "HT.ConsumeComponentOnFailure".Translate(),
+                ref settings.consumeComponentOnFailure, "HT.ConsumeComponentOnFailureTooltip".Translate());
+
+            if (settings.consumeComponentOnFailure)
+            {
+                string componentFailureBuffer = settings.componentConsumedOnFailure.ToString();
+                listingStandard.TextFieldNumericLabeled("        " + "HT.ComponentConsumedOnFailure".Translate(),
+                    ref settings.componentConsumedOnFailure, ref componentFailureBuffer, 0, settings.medicineCost);
             }
             listingStandard.GapLine();
 
@@ -193,25 +229,22 @@ namespace HussarTransformation
 
     // Building_HussarPod 클래스 수정 - Building 상속으로 변경
 
-    public class Building_HussarPod : Building, IThingHolder, IHaulDestination
+    public class Building_HussarPod : Building_Bed, IHaulDestination, IThingHolder
     {
         private CompPowerTrader powerComp;
         private float progress = 0f;
         private const int TicksPerRealSecond = 60;
         private const int TicksPerHour = 2500; // RimWorld hour
 
-        // innerContainer를 직접 구현
-        protected ThingOwner innerContainer;
-
         // Properties
-        public bool IsRunning => ContainedPawn != null;
-        public Pawn ContainedPawn => innerContainer?.FirstOrDefault() as Pawn;
+        public bool IsRunning => GetCurOccupant(0) != null;
+        public Pawn ContainedPawn => GetCurOccupant(0);
         public bool PowerOn => powerComp?.PowerOn ?? true;
-        public float ProgressPercent => IsRunning ?
-            progress / (HussarTransformationMod.settings.transformationDurationHours * TicksPerHour) : 0f;
+        public float ProgressPercent => IsRunning ? progress / (HussarTransformationMod.settings.transformationDurationHours * TicksPerHour) : 0f;
+        public bool HasAnyContents => AnyOccupants;
 
-        // Building_Casket처럼 HasAnyContents 구현
-        public bool HasAnyContents => innerContainer.Count > 0;
+        // 재료 저장 전용 innerContainer
+        protected ThingOwner innerContainer;
 
         // 새로 추가: 재료 저장 변수들
         private int storedGoJuice = 0;
@@ -268,7 +301,7 @@ namespace HussarTransformation
             return false;
         }
 
-        // 새로 추가: 재료 소모 메서드 (기존 ConsumeIngredients 대체)
+        // 재료 소모 메서드 (기존 ConsumeIngredients 대체)
         private bool ConsumeStoredMaterials()
         {
             var settings = HussarTransformationMod.settings;
@@ -282,6 +315,31 @@ namespace HussarTransformation
             storedComponents -= settings.componentCost;
 
             return true;
+        }
+        private void ConsumeStoredMaterials_Cancel()
+        {
+            var settings = HussarTransformationMod.settings;
+            if (!settings.consumeMedicineOnFailure)
+            {
+                return;
+            }
+            else
+            {
+                if(settings.medicineConsumedOnFailure > 0 && settings.consumeMedicineOnFailure)
+                {
+                    storedMedicine -= Math.Min(settings.medicineConsumedOnFailure, storedMedicine);
+                }
+                if(settings.goJuiceConsumedOnFailure > 0 && settings.consumeGoJuiceOnFailure)
+                {
+                    storedGoJuice -= Math.Min(settings.goJuiceConsumedOnFailure, storedGoJuice);
+                }
+                if(settings.componentConsumedOnFailure > 0 && settings.consumeComponentOnFailure)
+                {
+                    storedComponents -= Math.Min(settings.componentConsumedOnFailure, storedComponents);
+                }
+
+            }
+                
         }
 
         // ====================================================================
@@ -337,7 +395,7 @@ namespace HussarTransformation
             return false;
         }
 
-/*        public bool TryAcceptHaulable(Thing thing, Pawn hauler)
+        public bool TryAcceptHaulable(Thing thing, Pawn hauler)
         {
             Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() called - Thing: {thing?.def?.label ?? "null"}, " +
                         $"StackCount: {thing?.stackCount ?? 0}, " +
@@ -405,7 +463,7 @@ namespace HussarTransformation
                     Log.Message($"[HussarPod DEBUG] Full acceptance - Destroying entire stack: {thing.stackCount}");
                     thing.Destroy(DestroyMode.Vanish);
                     Messages.Message($"Added {amountToAccept} {materialName} to transformation pod",
-                                   this, MessageTypeDefOf.TaskCompletion);
+                                    this, MessageTypeDefOf.TaskCompletion);
                     return true;
                 }
                 else
@@ -416,7 +474,7 @@ namespace HussarTransformation
                     acceptedPortion.Destroy(DestroyMode.Vanish);
 
                     Messages.Message($"Added {amountToAccept} {materialName} to transformation pod (storage limit reached)",
-                                   this, MessageTypeDefOf.TaskCompletion);
+                                    this, MessageTypeDefOf.TaskCompletion);
 
                     // 여기서 false를 반환하여 바닐라 운반 시스템이 나머지를 처리하도록 함
                     //Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - Partial acceptance, let vanilla handle remainder");
@@ -426,7 +484,7 @@ namespace HussarTransformation
 
             //Log.Message($"[HussarPod DEBUG] TryAcceptHaulable() returning FALSE - Storage failed");
             return false;
-        }*/
+        }
 
 
         // 또는 SpaceRemainingFor 메서드 구현을 통해 올바른 양만 운반하도록 안내
@@ -586,16 +644,11 @@ namespace HussarTransformation
         {
             base.SpawnSetup(map, respawningAfterLoad);
             powerComp = GetComp<CompPowerTrader>();
-            if (innerContainer == null)
-            {
-                innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
-            }
         }
 
         // ====================================================================
-        // IThingHolder 인터페이스 구현
+        // I ThingHolder 구현
         // ====================================================================
-
         public ThingOwner GetDirectlyHeldThings()
         {
             return innerContainer;
@@ -607,14 +660,14 @@ namespace HussarTransformation
         }
 
         // ====================================================================
-        // Main Update Loop - 이제 확실히 작동할 것
+        // Main Update Loop
         // ====================================================================
 
         protected override void Tick()
         {
             base.Tick();
 
-            // innerContainer 내의 아이템들을 저장소로 자동 변환
+            // materialContainer의 아이템을 저장소로 변환
             if (innerContainer.Count > 0)
             {
                 List<Thing> itemsToProcess = new List<Thing>();
@@ -713,7 +766,6 @@ namespace HussarTransformation
                 }
             }
 
-
             // Update power consumption based on state
             if (powerComp != null)
             {
@@ -758,6 +810,14 @@ namespace HussarTransformation
                 if (pawn.needs.beauty != null) pawn.needs.beauty.CurLevel = pawn.needs.beauty.MaxLevel;
                 if (pawn.needs.outdoors != null) pawn.needs.outdoors.CurLevel = pawn.needs.outdoors.MaxLevel;
             }
+            /*
+            // 변형 Job 유지 확인
+            if (pawn.CurJob == null || pawn.CurJob.targetA.Thing != this)
+            {
+                Job transformJob = JobMaker.MakeJob(JobDefOf.LayDown, this);
+                transformJob.forceSleep = true;
+                pawn.jobs.TryTakeOrderedJob(transformJob, JobTag.Misc);
+            }*/
 
             // 정신적 상태 관리
             if (pawn?.mindState?.mentalStateHandler != null)
@@ -793,29 +853,18 @@ namespace HussarTransformation
         private bool TryAcceptPawn(Pawn pawn)
         {
             if (!CanAcceptPawn(pawn).Accepted) return false;
-
-            // 저장된 재료로 변경
-            if (!ConsumeStoredMaterials())
+            if (!HasEnoughMaterials)
             {
                 Messages.Message("HT.MissingStoredMaterialsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
                 return false;
             }
 
-            // Pawn을 DeSpawn하고 container에 추가
-            if (pawn.Spawned)
-            {
-                pawn.DeSpawn();
-            }
+            Job transformJob = JobMaker.MakeJob(JobDefOf.LayDown, this);
+            transformJob.forceSleep = true;
+            pawn.jobs.TryTakeOrderedJob(transformJob, JobTag.Misc);
 
-            bool success = innerContainer.TryAdd(pawn, true);
-
-            if (success)
-            {
-                progress = 0f;
-                Log.Message($"[HussarPod] Pawn {pawn.LabelShort} accepted, Container count: {innerContainer?.Count ?? 0}");
-            }
-
-            return success;
+            progress = 0f;
+            return true;
         }
 
         public AcceptanceReport CanAcceptPawn(Pawn pawn)
@@ -856,10 +905,15 @@ namespace HussarTransformation
             return true;
         }
 
-        // Building_Casket의 EjectContents를 직접 구현
+
         public virtual void EjectContents()
         {
-            innerContainer.TryDropAll(InteractionCell, Map, ThingPlaceMode.Near);
+            var pawn = ContainedPawn;
+            if (pawn != null)
+            {
+                // 침대에서 일어나게 하기
+                pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
+            }
         }
 
         // ====================================================================
@@ -872,7 +926,6 @@ namespace HussarTransformation
             if (pawn == null)
             {
                 Log.Error("Hussar Pod tried to finish transformation but pawn was null.");
-                innerContainer.Clear();
                 progress = 0f;
                 return;
             }
@@ -883,6 +936,10 @@ namespace HussarTransformation
             if (pawn.genes != null)
             {
                 pawn.genes.SetXenotype(XenotypeDefOf.Hussar);
+            }
+            if(ConsumeStoredMaterials())
+            {
+                Log.Error("[Hussar Transformation] Not Enough Materials in Pod");
             }
 
             Messages.Message("HT.TransformationCompleteMessage".Translate(pawn.LabelShortCap),
@@ -895,7 +952,6 @@ namespace HussarTransformation
             Pawn pawn = ContainedPawn;
             if (pawn == null)
             {
-                innerContainer.Clear();
                 progress = 0f;
                 return;
             }
@@ -905,6 +961,7 @@ namespace HussarTransformation
 
             if (HussarTransformationMod.settings.consumeMedicineOnFailure)
             {
+                ConsumeStoredMaterials_Cancel();
                 Messages.Message(
                     "HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason) + "\n" +
                     "HT.MedicineConsumedOnFailureMessage".Translate(
@@ -925,30 +982,13 @@ namespace HussarTransformation
 
         public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
-            Map map = Map;
-            base.Destroy(mode);
-
-            if (innerContainer.Count > 0 && (mode == DestroyMode.Deconstruct || mode == DestroyMode.KillFinalize))
+            var pawn = ContainedPawn;
+            if (pawn != null && mode != DestroyMode.Deconstruct)
             {
-                if (mode != DestroyMode.Deconstruct)
-                {
-                    // Pawn이 있으면 기절시키기
-                    List<Pawn> pawns = new List<Pawn>();
-                    foreach (Thing item in innerContainer)
-                    {
-                        if (item is Pawn pawn)
-                        {
-                            pawns.Add(pawn);
-                        }
-                    }
-                    foreach (Pawn pawn in pawns)
-                    {
-                        HealthUtility.DamageUntilDowned(pawn);
-                    }
-                }
-                innerContainer.TryDropAll(Position, map, ThingPlaceMode.Near);
+                HealthUtility.DamageUntilDowned(pawn);
             }
-            innerContainer.ClearAndDestroyContents();
+
+            base.Destroy(mode);
         }
 
         // ====================================================================
@@ -959,7 +999,6 @@ namespace HussarTransformation
         {
             base.ExposeData();
             Scribe_Values.Look(ref progress, "progress", 0f);
-            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
             Scribe_Deep.Look(ref storageSettings, "storageSettings", this);
 
             // 재료 저장 정보
@@ -968,7 +1007,7 @@ namespace HussarTransformation
             Scribe_Values.Look(ref storedComponents, "storedComponents", 0);
         }
         // ====================================================================
-        // GetInspectString, GetGizmos, etc...
+        // GetInspectString
         // ====================================================================
 
         // GetInspectString 수정 (재료 저장 상태 표시)
@@ -1001,9 +1040,15 @@ namespace HussarTransformation
 
         public override IEnumerable<Gizmo> GetGizmos()
         {
-            foreach (var gizmo in base.GetGizmos())
+
+            // 전력 관련 기즈모 수동 추가
+            var powerComp = GetComp<CompPowerTrader>();
+            if (powerComp != null)
             {
-                yield return gizmo;
+                foreach (var gizmo in powerComp.CompGetGizmosExtra())
+                {
+                    yield return gizmo;
+                }
             }
 
             // Begin Transformation 버튼
