@@ -10,6 +10,12 @@
     <HT.ConsumeMedicineOnFailure>Consume medicine on failure</HT.ConsumeMedicineOnFailure>
     <HT.ConsumeMedicineOnFailureTooltip>If the process is cancelled (e.g., due to power loss), medicine will still be consumed.</HT.ConsumeMedicineOnFailureTooltip>
     <HT.MedicineConsumedOnFailure>Medicine consumed on failure</HT.MedicineConsumedOnFailure>
+    <HT.ConsumeGoJuiceOnFailure>Consume Go-Juice on failure</HT.ConsumeGoJuiceOnFailure>
+    <HT.ConsumeGoJuiceOnFailureTooltip>If the process is cancelled (e.g., due to power loss), Go-Juice will still be consumed.</HT.ConsumeGoJuiceOnFailureTooltip>
+    <HT.GoJuiceConsumedOnFailure>Go-Juice consumed on failure</HT.GoJuiceConsumedOnFailure>
+    <HT.ConsumeComponentOnFailure>Consume component on failure</HT.ConsumeComponentOnFailure>
+    <HT.ConsumeComponentOnFailureTooltip>If the process is cancelled (e.g., due to power loss), component will still be consumed.</HT.ConsumeComponentOnFailureTooltip>
+    <HT.ComponentConsumedOnFailure>Component consumed on failure</HT.ComponentConsumedOnFailure>
     <HT.TransformationDuration>Transformation Duration</HT.TransformationDuration>
     <HT.Hours>{0} hours</HT.Hours>
     <HT.PowerConsumption>Power Consumption</HT.PowerConsumption>

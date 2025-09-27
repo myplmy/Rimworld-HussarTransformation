@@ -10,6 +10,12 @@
     <HT.ConsumeMedicineOnFailure>작동 중단 시 의약품 소모</HT.ConsumeMedicineOnFailure>
     <HT.ConsumeMedicineOnFailureTooltip>작동이 중단될 경우(예: 정전)에도 의약품이 소모됩니다.</HT.ConsumeMedicineOnFailureTooltip>
     <HT.MedicineConsumedOnFailure>중단 시 소모될 의약품 개수</HT.MedicineConsumedOnFailure>
+    <HT.ConsumeGoJuiceOnFailure>작동 중단 시 고주스 소모</HT.ConsumeGoJuiceOnFailure>
+    <HT.ConsumeGoJuiceOnFailureTooltip>작동이 중단될 경우(예: 정전)에도 고주스가 소모됩니다.</HT.ConsumeGoJuiceOnFailureTooltip>
+    <HT.GoJuiceConsumedOnFailure>중단 시 소모될 고주스 개수</HT.GoJuiceConsumedOnFailure>
+    <HT.ConsumeComponentOnFailure>작동 중단 시 부품 소모</HT.ConsumeComponentOnFailure>
+    <HT.ConsumeComponentOnFailureTooltip>작동이 중단될 경우(예: 정전)에도 부품이 소모됩니다.</HT.ConsumeComponentOnFailureTooltip>
+    <HT.ComponentConsumedOnFailure>중단 시 소모될 부품 개수</HT.ComponentConsumedOnFailure>
     <HT.TransformationDuration>후사르 변형 시간</HT.TransformationDuration>
     <HT.Hours>{0} 시간</HT.Hours>
     <HT.PowerConsumption>전력 소모량</HT.PowerConsumption>

@@ -37,6 +37,10 @@ namespace HussarTransformation
         public int componentCost = 1;
         public bool consumeMedicineOnFailure = true;
         public int medicineConsumedOnFailure = 1;
+        public bool consumeGoJuiceOnFailure = false;
+        public int goJuiceConsumedOnFailure = 0;
+        public bool consumeComponentOnFailure = false;
+        public int componentConsumedOnFailure = 0;
         public float transformationDurationHours = 4f;
         public int powerConsumption = 200;
         public bool stopOnPowerLoss = true;
@@ -50,6 +54,10 @@ namespace HussarTransformation
             Scribe_Values.Look(ref componentCost, "componentCost", 1);
             Scribe_Values.Look(ref consumeMedicineOnFailure, "consumeMedicineOnFailure", true);
             Scribe_Values.Look(ref medicineConsumedOnFailure, "medicineConsumedOnFailure", 1);
+            Scribe_Values.Look(ref consumeGoJuiceOnFailure, "consumeMedicineOnFailure", false);
+            Scribe_Values.Look(ref goJuiceConsumedOnFailure, "goJuiceConsumedOnFailure", 0);
+            Scribe_Values.Look(ref consumeComponentOnFailure, "consumeComponentOnFailure", false);
+            Scribe_Values.Look(ref componentConsumedOnFailure, "componentConsumedOnFailure", 0);
             Scribe_Values.Look(ref transformationDurationHours, "transformationDurationHours", 4f);
             Scribe_Values.Look(ref powerConsumption, "powerConsumption", 200);
             Scribe_Values.Look(ref stopOnPowerLoss, "stopOnPowerLoss", true);
@@ -62,6 +70,14 @@ namespace HussarTransformation
             if (medicineConsumedOnFailure > medicineCost)
             {
                 medicineConsumedOnFailure = medicineCost;
+            }
+            if (goJuiceConsumedOnFailure > goJuiceCost)
+            {
+                goJuiceConsumedOnFailure = goJuiceCost;
+            }
+            if (componentConsumedOnFailure > componentCost)
+            {
+                componentConsumedOnFailure = componentCost;
             }
             goJuiceCost = Mathf.Clamp(goJuiceCost, 0, 99);
             medicineCost = Mathf.Clamp(medicineCost, 0, 99);
@@ -119,6 +135,26 @@ namespace HussarTransformation
                 string medicineFailureBuffer = settings.medicineConsumedOnFailure.ToString();
                 listingStandard.TextFieldNumericLabeled("        " + "HT.MedicineConsumedOnFailure".Translate(),
                     ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
+            }
+
+            listingStandard.CheckboxLabeled("    " + "HT.ConsumeGoJuiceOnFailure".Translate(),
+                ref settings.consumeGoJuiceOnFailure, "HT.ConsumeGoJuiceOnFailureTooltip".Translate());
+
+            if (settings.consumeGoJuiceOnFailure)
+            {
+                string goJuiceFailureBuffer = settings.goJuiceConsumedOnFailure.ToString();
+                listingStandard.TextFieldNumericLabeled("        " + "HT.GoJuiceConsumedOnFailure".Translate(),
+                    ref settings.goJuiceConsumedOnFailure, ref goJuiceFailureBuffer, 0, settings.goJuiceCost);
+            }
+
+            listingStandard.CheckboxLabeled("    " + "HT.ConsumeComponentOnFailure".Translate(),
+                ref settings.consumeComponentOnFailure, "HT.ConsumeComponentOnFailureTooltip".Translate());
+
+            if (settings.consumeComponentOnFailure)
+            {
+                string componentFailureBuffer = settings.componentConsumedOnFailure.ToString();
+                listingStandard.TextFieldNumericLabeled("        " + "HT.ComponentConsumedOnFailure".Translate(),
+                    ref settings.componentConsumedOnFailure, ref componentFailureBuffer, 0, settings.medicineCost);
             }
             listingStandard.GapLine();
 
