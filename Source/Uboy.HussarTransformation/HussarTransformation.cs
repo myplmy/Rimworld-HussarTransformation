@@ -54,7 +54,7 @@ namespace HussarTransformation
             Scribe_Values.Look(ref componentCost, "componentCost", 1);
             Scribe_Values.Look(ref consumeMedicineOnFailure, "consumeMedicineOnFailure", true);
             Scribe_Values.Look(ref medicineConsumedOnFailure, "medicineConsumedOnFailure", 1);
-            Scribe_Values.Look(ref consumeGoJuiceOnFailure, "consumeMedicineOnFailure", false);
+            Scribe_Values.Look(ref consumeGoJuiceOnFailure, "consumeGoJuiceOnFailure", false);
             Scribe_Values.Look(ref goJuiceConsumedOnFailure, "goJuiceConsumedOnFailure", 0);
             Scribe_Values.Look(ref consumeComponentOnFailure, "consumeComponentOnFailure", false);
             Scribe_Values.Look(ref componentConsumedOnFailure, "componentConsumedOnFailure", 0);
@@ -83,6 +83,8 @@ namespace HussarTransformation
             medicineCost = Mathf.Clamp(medicineCost, 0, 99);
             componentCost = Mathf.Clamp(componentCost, 0, 99);
             medicineConsumedOnFailure = Mathf.Clamp(medicineConsumedOnFailure, 0, medicineCost);
+            goJuiceConsumedOnFailure = Mathf.Clamp(goJuiceConsumedOnFailure, 0, goJuiceCost);
+            componentConsumedOnFailure = Mathf.Clamp(componentConsumedOnFailure, 0, medicineCost);
             transformationDurationHours = Mathf.Clamp(transformationDurationHours, 0f, 24f);
             powerConsumption = Mathf.Clamp(powerConsumption, 0, 1000);
             researchCost = Mathf.Clamp(researchCost, 0, 9999);
@@ -115,17 +117,9 @@ namespace HussarTransformation
             // (2) Item Costs
             listingStandard.Label("HT.ItemCosts".Translate());
 
-            string goJuiceBuffer = settings.goJuiceCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.GoJuiceCost".Translate(),
-                ref settings.goJuiceCost, ref goJuiceBuffer, 0, 99);
-
             string medicineBuffer = settings.medicineCost.ToString();
             listingStandard.TextFieldNumericLabeled("    " + "HT.MedicineCost".Translate(),
                 ref settings.medicineCost, ref medicineBuffer, 0, 99);
-
-            string componentBuffer = settings.componentCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.ComponentCost".Translate(),
-                ref settings.componentCost, ref componentBuffer, 0, 99);
 
             listingStandard.CheckboxLabeled("    " + "HT.ConsumeMedicineOnFailure".Translate(),
                 ref settings.consumeMedicineOnFailure, "HT.ConsumeMedicineOnFailureTooltip".Translate());
@@ -137,6 +131,10 @@ namespace HussarTransformation
                     ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
             }
 
+            string goJuiceBuffer = settings.goJuiceCost.ToString();
+            listingStandard.TextFieldNumericLabeled("    " + "HT.GoJuiceCost".Translate(),
+                ref settings.goJuiceCost, ref goJuiceBuffer, 0, 99);
+
             listingStandard.CheckboxLabeled("    " + "HT.ConsumeGoJuiceOnFailure".Translate(),
                 ref settings.consumeGoJuiceOnFailure, "HT.ConsumeGoJuiceOnFailureTooltip".Translate());
 
@@ -147,6 +145,10 @@ namespace HussarTransformation
                     ref settings.goJuiceConsumedOnFailure, ref goJuiceFailureBuffer, 0, settings.goJuiceCost);
             }
 
+            string componentBuffer = settings.componentCost.ToString();
+            listingStandard.TextFieldNumericLabeled("    " + "HT.ComponentCost".Translate(),
+                ref settings.componentCost, ref componentBuffer, 0, 99);
+
             listingStandard.CheckboxLabeled("    " + "HT.ConsumeComponentOnFailure".Translate(),
                 ref settings.consumeComponentOnFailure, "HT.ConsumeComponentOnFailureTooltip".Translate());
 
@@ -154,7 +156,7 @@ namespace HussarTransformation
             {
                 string componentFailureBuffer = settings.componentConsumedOnFailure.ToString();
                 listingStandard.TextFieldNumericLabeled("        " + "HT.ComponentConsumedOnFailure".Translate(),
-                    ref settings.componentConsumedOnFailure, ref componentFailureBuffer, 0, settings.medicineCost);
+                    ref settings.componentConsumedOnFailure, ref componentFailureBuffer, 0, settings.componentCost);
             }
             listingStandard.GapLine();
 
