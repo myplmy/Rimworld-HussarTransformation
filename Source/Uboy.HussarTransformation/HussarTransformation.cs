@@ -45,6 +45,10 @@ namespace HussarTransformation
         public int powerConsumption = 200;
         public bool stopOnPowerLoss = true;
         public int researchCost = 600;
+        public int maxStoredGoJuice = 5;
+        public int maxStoredMedicine = 5;
+        public int maxStoredComponents = 5;
+
 
         public override void ExposeData()
         {
@@ -62,6 +66,9 @@ namespace HussarTransformation
             Scribe_Values.Look(ref powerConsumption, "powerConsumption", 200);
             Scribe_Values.Look(ref stopOnPowerLoss, "stopOnPowerLoss", true);
             Scribe_Values.Look(ref researchCost, "researchCost", 600);
+            Scribe_Values.Look(ref maxStoredGoJuice, "maxStoredGoJuice", 5);
+            Scribe_Values.Look(ref maxStoredMedicine, "maxStoredMedicine", 5);
+            Scribe_Values.Look(ref maxStoredComponents, "maxStoredComponents", 5);
             base.ExposeData();
         }
 
@@ -88,6 +95,9 @@ namespace HussarTransformation
             transformationDurationHours = Mathf.Clamp(transformationDurationHours, 0f, 24f);
             powerConsumption = Mathf.Clamp(powerConsumption, 0, 1000);
             researchCost = Mathf.Clamp(researchCost, 0, 9999);
+            maxStoredGoJuice = Mathf.Clamp(maxStoredGoJuice, 1, 99);
+            maxStoredMedicine = Mathf.Clamp(maxStoredMedicine, 1, 99);
+            maxStoredComponents = Mathf.Clamp(maxStoredComponents, 1, 99);
         }
     }
 
@@ -114,7 +124,23 @@ namespace HussarTransformation
                 "HT.AllowOtherXenotypesTooltip".Translate());
             listingStandard.GapLine();
 
-            // (2) Item Costs
+            // (2) Storage Capacity - 새로 추가
+            listingStandard.Label("HT.StorageCapacity".Translate());
+
+            string goJuiceStorageBuffer = settings.maxStoredGoJuice.ToString();
+            listingStandard.TextFieldNumericLabeled("    " + "HT.MaxStoredGoJuice".Translate(),
+                ref settings.maxStoredGoJuice, ref goJuiceStorageBuffer, 1, 99);
+
+            string medicineStorageBuffer = settings.maxStoredMedicine.ToString();
+            listingStandard.TextFieldNumericLabeled("    " + "HT.MaxStoredMedicine".Translate(),
+                ref settings.maxStoredMedicine, ref medicineStorageBuffer, 1, 99);
+
+            string componentStorageBuffer = settings.maxStoredComponents.ToString();
+            listingStandard.TextFieldNumericLabeled("    " + "HT.MaxStoredComponents".Translate(),
+                ref settings.maxStoredComponents, ref componentStorageBuffer, 1, 99);
+            listingStandard.GapLine();
+
+            // (3) Item Costs
             listingStandard.Label("HT.ItemCosts".Translate());
 
             string medicineBuffer = settings.medicineCost.ToString();
@@ -131,6 +157,8 @@ namespace HussarTransformation
                     ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
             }
 
+            listingStandard.Gap();
+
             string goJuiceBuffer = settings.goJuiceCost.ToString();
             listingStandard.TextFieldNumericLabeled("    " + "HT.GoJuiceCost".Translate(),
                 ref settings.goJuiceCost, ref goJuiceBuffer, 0, 99);
@@ -144,6 +172,8 @@ namespace HussarTransformation
                 listingStandard.TextFieldNumericLabeled("        " + "HT.GoJuiceConsumedOnFailure".Translate(),
                     ref settings.goJuiceConsumedOnFailure, ref goJuiceFailureBuffer, 0, settings.goJuiceCost);
             }
+
+            listingStandard.Gap();
 
             string componentBuffer = settings.componentCost.ToString();
             listingStandard.TextFieldNumericLabeled("    " + "HT.ComponentCost".Translate(),
@@ -160,13 +190,13 @@ namespace HussarTransformation
             }
             listingStandard.GapLine();
 
-            // (3) Transformation Duration
+            // (4) Transformation Duration
             listingStandard.Label("HT.TransformationDuration".Translate() + ": " +
                 "HT.Hours".Translate(settings.transformationDurationHours.ToString("0.0")));
             settings.transformationDurationHours = listingStandard.Slider(settings.transformationDurationHours, 0f, 24f);
             listingStandard.GapLine();
 
-            // (4) Power Consumption
+            // (5) Power Consumption
             listingStandard.Label("HT.PowerConsumption".Translate() + ": " +
                 settings.powerConsumption.ToString() + " W");
             settings.powerConsumption = (int)listingStandard.Slider(settings.powerConsumption, 0, 1000);
@@ -174,7 +204,7 @@ namespace HussarTransformation
                 ref settings.stopOnPowerLoss, "HT.StopOnPowerLossTooltip".Translate());
             listingStandard.GapLine();
 
-            // (5) Research Cost
+            // (6) Research Cost
             listingStandard.Label("HT.ResearchCost".Translate());
             string researchBuffer = settings.researchCost.ToString();
             listingStandard.TextFieldNumericLabeled("    " + "HT.ResearchCostValue".Translate(),
@@ -229,17 +259,19 @@ namespace HussarTransformation
     // 5. HUSSAR TRANSFORMATION POD (BUILDING)
     // ====================================================================
 
-    // Building_HussarPod 클래스 수정 - Building 상속으로 변경
+    // Building_HussarPod 클래스 수정 - Building_Enterable 상속으로 변경
 
-    public class Building_HussarPod : Building, IThingHolder, IHaulDestination
+    public class Building_HussarPod : Building_Enterable, ISuspendableThingHolder, IHaulDestination
     {
         private CompPowerTrader powerComp;
         private float progress = 0f;
         private const int TicksPerRealSecond = 60;
         private const int TicksPerHour = 2500; // RimWorld hour
 
-        // innerContainer를 직접 구현
-        protected ThingOwner innerContainer;
+        // Properties 섹션에 추가
+        public override bool IsContentsSuspended => true;
+
+        public override Vector3 PawnDrawOffset => IntVec3.West.RotatedBy(base.Rotation).ToVector3() / def.size.x;
 
         // Properties
         public bool IsRunning => ContainedPawn != null;
@@ -248,10 +280,9 @@ namespace HussarTransformation
         public float ProgressPercent => IsRunning ?
             progress / (HussarTransformationMod.settings.transformationDurationHours * TicksPerHour) : 0f;
 
-        // Building_Casket처럼 HasAnyContents 구현
         public bool HasAnyContents => innerContainer.Count > 0;
 
-        // 새로 추가: 재료 저장 변수들
+        // 재료 저장 변수들
         private int storedGoJuice = 0;
         private int storedMedicine = 0;
         private int storedComponents = 0;
@@ -261,11 +292,12 @@ namespace HussarTransformation
         private const int MAX_STORED_MEDICINE = 5;
         private const int MAX_STORED_COMPONENTS = 5;
 
-        public int MaxStoredGoJuice => MAX_STORED_GOJUICE;
-        public int MaxStoredMedicine => MAX_STORED_MEDICINE;
-        public int MaxStoredComponents => MAX_STORED_COMPONENTS;
+        public int MaxStoredGoJuice => HussarTransformationMod.settings.maxStoredGoJuice;
+        public int MaxStoredMedicine => HussarTransformationMod.settings.maxStoredMedicine;
+        public int MaxStoredComponents => HussarTransformationMod.settings.maxStoredComponents;
 
-        // 새로 추가: 재료 관리 프로퍼티들
+
+        // 재료 관리 프로퍼티들
         public int StoredGoJuice => storedGoJuice;
         public int StoredMedicine => storedMedicine;
         public int StoredComponents => storedComponents;
@@ -306,20 +338,26 @@ namespace HussarTransformation
             return false;
         }
 
-        // 새로 추가: 재료 소모 메서드 (기존 ConsumeIngredients 대체)
-        private bool ConsumeStoredMaterials()
+        // 재료 소모 메서드 
+        private void ConsumeStoredMaterials()
         {
             var settings = HussarTransformationMod.settings;
 
             // 저장된 재료가 충분한지 확인
-            if (!HasEnoughMaterials) return false;
+            if (HasEnoughMaterials)
+            {
+                storedGoJuice -= settings.goJuiceCost;
+                storedMedicine -= settings.medicineCost;
+                storedComponents -= settings.componentCost;
+            }
+            else
+            {
+                Log.Error("[Hussar Transformation] Attempted to consume stored materials, but not enough were available.");
+                storedGoJuice = 0;
+                storedMedicine = 0;
+                storedComponents = 0;
 
-            // 재료 소모
-            storedGoJuice -= settings.goJuiceCost;
-            storedMedicine -= settings.medicineCost;
-            storedComponents -= settings.componentCost;
-
-            return true;
+            }
         }
 
         // ====================================================================
@@ -334,7 +372,7 @@ namespace HussarTransformation
                        .Any(medicineDef => SpaceRemainingFor(medicineDef) > 0);
         }
 
-        public bool Accepts(Thing thing)
+        public virtual bool Accepts(Thing thing)
         {
             // 디버그 로그 추가
 /*            Log.Message($"[HussarPod DEBUG] Accepts() called - Thing: {thing?.def?.label ?? "null"}, " +
@@ -615,33 +653,15 @@ namespace HussarTransformation
         // Initialization
         // ====================================================================
 
-        public Building_HussarPod()
+        public Building_HussarPod() : base()
         {
-            innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
+            //innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
         }
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
             powerComp = GetComp<CompPowerTrader>();
-            if (innerContainer == null)
-            {
-                innerContainer = new ThingOwner<Thing>(this, oneStackOnly: false);
-            }
-        }
-
-        // ====================================================================
-        // IThingHolder 인터페이스 구현
-        // ====================================================================
-
-        public ThingOwner GetDirectlyHeldThings()
-        {
-            return innerContainer;
-        }
-
-        public void GetChildHolders(List<IThingHolder> outChildren)
-        {
-            ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
         }
 
         // ====================================================================
@@ -817,26 +837,27 @@ namespace HussarTransformation
         // ====================================================================
         // 직접 구현한 Pawn 관리 메서드들
         // ====================================================================
-
-        public virtual bool TryAcceptThing(Thing thing, bool allowSpecialEffects = true)
+        /*
+        public override bool TryAcceptThing(Thing thing, bool allowSpecialEffects = true)
         {
             if (thing is Pawn pawn)
             {
                 return CanAcceptPawn(pawn).Accepted && TryAcceptPawn(pawn);
             }
             return false;
-        }
+        }*/
+
 
         // TryAcceptPawn 수정 (기존 ConsumeIngredients → ConsumeStoredMaterials)
-        private bool TryAcceptPawn(Pawn pawn)
+        public override void TryAcceptPawn(Pawn pawn)
         {
-            if (!CanAcceptPawn(pawn).Accepted) return false;
+            if (!CanAcceptPawn(pawn).Accepted) return;
 
             // 저장된 재료로 변경
-            if (!ConsumeStoredMaterials())
+            if (!HasEnoughMaterials)
             {
                 Messages.Message("HT.MissingStoredMaterialsMessage".Translate(), pawn, MessageTypeDefOf.RejectInput);
-                return false;
+                return;
             }
 
             // Pawn을 DeSpawn하고 container에 추가
@@ -852,11 +873,9 @@ namespace HussarTransformation
                 progress = 0f;
                 Log.Message($"[HussarPod] Pawn {pawn.LabelShort} accepted, Container count: {innerContainer?.Count ?? 0}");
             }
-
-            return success;
         }
 
-        public AcceptanceReport CanAcceptPawn(Pawn pawn)
+        public override AcceptanceReport CanAcceptPawn(Pawn pawn)
         {
             if (pawn == null)
                 return false;
@@ -895,7 +914,7 @@ namespace HussarTransformation
         }
 
         // Building_Casket의 EjectContents를 직접 구현
-        public virtual void EjectContents()
+        public void EjectContents()
         {
             innerContainer.TryDropAll(InteractionCell, Map, ThingPlaceMode.Near);
         }
@@ -922,6 +941,8 @@ namespace HussarTransformation
             {
                 pawn.genes.SetXenotype(XenotypeDefOf.Hussar);
             }
+
+            ConsumeStoredMaterials();
 
             Messages.Message("HT.TransformationCompleteMessage".Translate(pawn.LabelShortCap),
                 pawn, MessageTypeDefOf.PositiveEvent);
@@ -997,7 +1018,6 @@ namespace HussarTransformation
         {
             base.ExposeData();
             Scribe_Values.Look(ref progress, "progress", 0f);
-            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
             Scribe_Deep.Look(ref storageSettings, "storageSettings", this);
 
             // 재료 저장 정보
@@ -1148,8 +1168,7 @@ namespace HussarTransformation
                 var pod = Pod;
                 if (pod != null)
                 {
-                    // Building_Casket의 TryAcceptThing 사용
-                    pod.TryAcceptThing(pawn, true);
+                    pod.TryAcceptPawn(pawn);
                 }
             };
             enter.defaultCompleteMode = ToilCompleteMode.Instant;

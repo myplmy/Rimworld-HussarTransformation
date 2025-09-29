@@ -3,6 +3,10 @@
     <!-- Mod Settings -->
     <HT.AllowOtherXenotypes>Allow non-baseliner xenotypes to use the pod</HT.AllowOtherXenotypes>
     <HT.AllowOtherXenotypesTooltip>If checked, any xenohuman can be transformed into a hussar. If unchecked, only baseliners can use the pod.</HT.AllowOtherXenotypesTooltip>
+    <HT.StorageCapacity>Transformation Pod Item Capacity</HT.StorageCapacity>
+    <HT.MaxStoredGoJuice>Max GoJuice Capacity</HT.MaxStoredGoJuice>
+    <HT.MaxStoredMedicine>Max Medicine Capacity</HT.MaxStoredMedicine>
+    <HT.MaxStoredComponents>Max Component Capacity</HT.MaxStoredComponents>
     <HT.ItemCosts>Item Costs for Transformation</HT.ItemCosts>
     <HT.GoJuiceCost>Go-Juice</HT.GoJuiceCost>
     <HT.MedicineCost>Medicine</HT.MedicineCost>
