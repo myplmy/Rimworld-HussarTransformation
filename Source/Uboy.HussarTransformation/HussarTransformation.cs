@@ -31,6 +31,25 @@ namespace HussarTransformation
 
     public class HussarTransformationSettings : ModSettings
     {
+        // 기본값 상수 정의
+        public const bool DEFAULT_ALLOW_OTHER_XENOTYPES = false;
+        public const int DEFAULT_GO_JUICE_COST = 1;
+        public const int DEFAULT_MEDICINE_COST = 1;
+        public const int DEFAULT_COMPONENT_COST = 1;
+        public const bool DEFAULT_CONSUME_MEDICINE_ON_FAILURE = true;
+        public const int DEFAULT_MEDICINE_CONSUMED_ON_FAILURE = 1;
+        public const bool DEFAULT_CONSUME_GO_JUICE_ON_FAILURE = false;
+        public const int DEFAULT_GO_JUICE_CONSUMED_ON_FAILURE = 0;
+        public const bool DEFAULT_CONSUME_COMPONENT_ON_FAILURE = false;
+        public const int DEFAULT_COMPONENT_CONSUMED_ON_FAILURE = 0;
+        public const float DEFAULT_TRANSFORMATION_DURATION_HOURS = 4f;
+        public const int DEFAULT_POWER_CONSUMPTION = 200;
+        public const bool DEFAULT_STOP_ON_POWER_LOSS = true;
+        public const int DEFAULT_RESEARCH_COST = 600;
+        public const int DEFAULT_MAX_STORED_GO_JUICE = 5;
+        public const int DEFAULT_MAX_STORED_MEDICINE = 5;
+        public const int DEFAULT_MAX_STORED_COMPONENTS = 5;
+
         public bool allowOtherXenotypes = false;
         public int goJuiceCost = 1;
         public int medicineCost = 1;
@@ -114,102 +133,297 @@ namespace HussarTransformation
             settings = GetSettings<HussarTransformationSettings>();
         }
 
+        // 체크박스 + 리셋 버튼 (텍스트 버튼 사용)
+        private void CheckboxLabeledWithReset(Listing_Standard listing, string label, ref bool value,
+            bool defaultValue, string tooltip = null)
+        {
+            Rect rect = listing.GetRect(Text.LineHeight);
+            Rect checkboxRect = new Rect(rect.x, rect.y, rect.width - 70f, rect.height);
+            Rect resetRect = new Rect(rect.xMax - 65f, rect.y, 60f, rect.height);
+
+            // 체크박스
+            if (tooltip != null)
+            {
+                Widgets.CheckboxLabeled(checkboxRect, label, ref value);
+                TooltipHandler.TipRegion(checkboxRect, tooltip);
+            }
+            else
+            {
+                Widgets.CheckboxLabeled(checkboxRect, label, ref value);
+            }
+
+            // 리셋 버튼 (텍스트)
+            if (Widgets.ButtonText(resetRect, "Reset"))
+            {
+                value = defaultValue;
+            }
+        }
+
+        // 숫자 입력 + 리셋 버튼 (텍스트 버튼 사용)
+        private void TextFieldNumericLabeledWithReset(Listing_Standard listing, string label,
+            ref int value, ref string buffer, int defaultValue, int min = 0, int max = 99)
+        {
+            Rect rect = listing.GetRect(Text.LineHeight);
+            Rect fieldRect = new Rect(rect.x, rect.y, rect.width - 70f, rect.height);
+            Rect resetRect = new Rect(rect.xMax - 65f, rect.y, 60f, rect.height);
+
+            // 숫자 입력 필드
+            Widgets.TextFieldNumericLabeled(fieldRect, label, ref value, ref buffer, min, max);
+
+            // 리셋 버튼 (텍스트)
+            if (Widgets.ButtonText(resetRect, "Reset"))
+            {
+                value = defaultValue;
+                buffer = value.ToString();
+            }
+        }
+
+        // float 슬라이더 + 리셋 버튼 (텍스트 버튼 사용)
+        private void SliderLabeledWithReset(Listing_Standard listing, string label,
+            ref float value, float defaultValue, float min, float max)
+        {
+            Rect rect = listing.GetRect(Text.LineHeight);
+            Rect labelRect = new Rect(rect.x, rect.y, rect.width - 70f, rect.height);
+            Rect resetRect = new Rect(rect.xMax - 65f, rect.y, 60f, rect.height);
+
+            // 라벨
+            Widgets.Label(labelRect, label);
+
+            // 리셋 버튼 (텍스트)
+            if (Widgets.ButtonText(resetRect, "Reset"))
+            {
+                value = defaultValue;
+            }
+
+            // 슬라이더 (다음 줄)
+            value = listing.Slider(value, min, max);
+        }
+
+        // int 슬라이더 + 리셋 버튼 (텍스트 버튼 사용)
+        private void SliderLabeledWithReset(Listing_Standard listing, string label,
+            ref int value, int defaultValue, int min, int max)
+        {
+            float floatValue = value;
+            Rect rect = listing.GetRect(Text.LineHeight);
+            Rect labelRect = new Rect(rect.x, rect.y, rect.width - 70f, rect.height);
+            Rect resetRect = new Rect(rect.xMax - 65f, rect.y, 60f, rect.height);
+
+            // 라벨
+            Widgets.Label(labelRect, label);
+
+            // 리셋 버튼 (텍스트)
+            if (Widgets.ButtonText(resetRect, "Reset"))
+            {
+                value = defaultValue;
+            }
+
+            // 슬라이더 (다음 줄)
+            value = (int)listing.Slider(floatValue, min, max);
+        }
+
+        private void ResetAllSettings()
+        {
+            settings.allowOtherXenotypes = HussarTransformationSettings.DEFAULT_ALLOW_OTHER_XENOTYPES;
+            settings.goJuiceCost = HussarTransformationSettings.DEFAULT_GO_JUICE_COST;
+            settings.medicineCost = HussarTransformationSettings.DEFAULT_MEDICINE_COST;
+            settings.componentCost = HussarTransformationSettings.DEFAULT_COMPONENT_COST;
+            settings.consumeMedicineOnFailure = HussarTransformationSettings.DEFAULT_CONSUME_MEDICINE_ON_FAILURE;
+            settings.medicineConsumedOnFailure = HussarTransformationSettings.DEFAULT_MEDICINE_CONSUMED_ON_FAILURE;
+            settings.consumeGoJuiceOnFailure = HussarTransformationSettings.DEFAULT_CONSUME_GO_JUICE_ON_FAILURE;
+            settings.goJuiceConsumedOnFailure = HussarTransformationSettings.DEFAULT_GO_JUICE_CONSUMED_ON_FAILURE;
+            settings.consumeComponentOnFailure = HussarTransformationSettings.DEFAULT_CONSUME_COMPONENT_ON_FAILURE;
+            settings.componentConsumedOnFailure = HussarTransformationSettings.DEFAULT_COMPONENT_CONSUMED_ON_FAILURE;
+            settings.transformationDurationHours = HussarTransformationSettings.DEFAULT_TRANSFORMATION_DURATION_HOURS;
+            settings.powerConsumption = HussarTransformationSettings.DEFAULT_POWER_CONSUMPTION;
+            settings.stopOnPowerLoss = HussarTransformationSettings.DEFAULT_STOP_ON_POWER_LOSS;
+            settings.researchCost = HussarTransformationSettings.DEFAULT_RESEARCH_COST;
+            settings.maxStoredGoJuice = HussarTransformationSettings.DEFAULT_MAX_STORED_GO_JUICE;
+            settings.maxStoredMedicine = HussarTransformationSettings.DEFAULT_MAX_STORED_MEDICINE;
+            settings.maxStoredComponents = HussarTransformationSettings.DEFAULT_MAX_STORED_COMPONENTS;
+        }
+
         public override void DoSettingsWindowContents(Rect inRect)
         {
+            // 상단에 "Reset All" 버튼 영역 확보
+            Rect buttonRect = new Rect(inRect.xMax - 120f, inRect.y, 110f, 30f);
+
+            if (Widgets.ButtonText(buttonRect, "Reset All"))
+            {
+                // 확인 다이얼로그 표시
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                    "Reset all settings to default values?",
+                    delegate
+                    {
+                        ResetAllSettings();
+                        Messages.Message("All settings have been reset to default values.",
+                            MessageTypeDefOf.TaskCompletion);
+                    },
+                    destructive: true
+                ));
+            }
+
+            // 버튼 아래부터 설정 목록 시작
+            Rect listRect = new Rect(inRect.x, inRect.y + 40f, inRect.width, inRect.height - 40f);
+
             Listing_Standard listingStandard = new Listing_Standard();
-            listingStandard.Begin(inRect);
+            listingStandard.Begin(listRect);
 
             // (1) Allow other xenotypes
-            listingStandard.CheckboxLabeled("HT.AllowOtherXenotypes".Translate(), ref settings.allowOtherXenotypes,
+            CheckboxLabeledWithReset(listingStandard,
+                "HT.AllowOtherXenotypes".Translate(),
+                ref settings.allowOtherXenotypes,
+                HussarTransformationSettings.DEFAULT_ALLOW_OTHER_XENOTYPES,
                 "HT.AllowOtherXenotypesTooltip".Translate());
             listingStandard.GapLine();
 
-            // (2) Storage Capacity - 새로 추가
+            // (2) Storage Capacity
             listingStandard.Label("HT.StorageCapacity".Translate());
 
             string goJuiceStorageBuffer = settings.maxStoredGoJuice.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.MaxStoredGoJuice".Translate(),
-                ref settings.maxStoredGoJuice, ref goJuiceStorageBuffer, 1, 99);
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.MaxStoredGoJuice".Translate(),
+                ref settings.maxStoredGoJuice,
+                ref goJuiceStorageBuffer,
+                HussarTransformationSettings.DEFAULT_MAX_STORED_GO_JUICE,
+                1, 99);
 
             string medicineStorageBuffer = settings.maxStoredMedicine.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.MaxStoredMedicine".Translate(),
-                ref settings.maxStoredMedicine, ref medicineStorageBuffer, 1, 99);
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.MaxStoredMedicine".Translate(),
+                ref settings.maxStoredMedicine,
+                ref medicineStorageBuffer,
+                HussarTransformationSettings.DEFAULT_MAX_STORED_MEDICINE,
+                1, 99);
 
             string componentStorageBuffer = settings.maxStoredComponents.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.MaxStoredComponents".Translate(),
-                ref settings.maxStoredComponents, ref componentStorageBuffer, 1, 99);
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.MaxStoredComponents".Translate(),
+                ref settings.maxStoredComponents,
+                ref componentStorageBuffer,
+                HussarTransformationSettings.DEFAULT_MAX_STORED_COMPONENTS,
+                1, 99);
             listingStandard.GapLine();
 
             // (3) Item Costs
             listingStandard.Label("HT.ItemCosts".Translate());
 
+            // Medicine Cost
             string medicineBuffer = settings.medicineCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.MedicineCost".Translate(),
-                ref settings.medicineCost, ref medicineBuffer, 0, 99);
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.MedicineCost".Translate(),
+                ref settings.medicineCost,
+                ref medicineBuffer,
+                HussarTransformationSettings.DEFAULT_MEDICINE_COST,
+                0, 99);
 
-            listingStandard.CheckboxLabeled("    " + "HT.ConsumeMedicineOnFailure".Translate(),
-                ref settings.consumeMedicineOnFailure, "HT.ConsumeMedicineOnFailureTooltip".Translate());
+            CheckboxLabeledWithReset(listingStandard,
+                "    " + "HT.ConsumeMedicineOnFailure".Translate(),
+                ref settings.consumeMedicineOnFailure,
+                HussarTransformationSettings.DEFAULT_CONSUME_MEDICINE_ON_FAILURE,
+                "HT.ConsumeMedicineOnFailureTooltip".Translate());
 
             if (settings.consumeMedicineOnFailure)
             {
                 string medicineFailureBuffer = settings.medicineConsumedOnFailure.ToString();
-                listingStandard.TextFieldNumericLabeled("        " + "HT.MedicineConsumedOnFailure".Translate(),
-                    ref settings.medicineConsumedOnFailure, ref medicineFailureBuffer, 0, settings.medicineCost);
+                TextFieldNumericLabeledWithReset(listingStandard,
+                    "        " + "HT.MedicineConsumedOnFailure".Translate(),
+                    ref settings.medicineConsumedOnFailure,
+                    ref medicineFailureBuffer,
+                    HussarTransformationSettings.DEFAULT_MEDICINE_CONSUMED_ON_FAILURE,
+                    0, settings.medicineCost);
             }
 
             listingStandard.Gap();
 
+            // Go-Juice Cost
             string goJuiceBuffer = settings.goJuiceCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.GoJuiceCost".Translate(),
-                ref settings.goJuiceCost, ref goJuiceBuffer, 0, 99);
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.GoJuiceCost".Translate(),
+                ref settings.goJuiceCost,
+                ref goJuiceBuffer,
+                HussarTransformationSettings.DEFAULT_GO_JUICE_COST,
+                0, 99);
 
-            listingStandard.CheckboxLabeled("    " + "HT.ConsumeGoJuiceOnFailure".Translate(),
-                ref settings.consumeGoJuiceOnFailure, "HT.ConsumeGoJuiceOnFailureTooltip".Translate());
+            CheckboxLabeledWithReset(listingStandard,
+                "    " + "HT.ConsumeGoJuiceOnFailure".Translate(),
+                ref settings.consumeGoJuiceOnFailure,
+                HussarTransformationSettings.DEFAULT_CONSUME_GO_JUICE_ON_FAILURE,
+                "HT.ConsumeGoJuiceOnFailureTooltip".Translate());
 
             if (settings.consumeGoJuiceOnFailure)
             {
                 string goJuiceFailureBuffer = settings.goJuiceConsumedOnFailure.ToString();
-                listingStandard.TextFieldNumericLabeled("        " + "HT.GoJuiceConsumedOnFailure".Translate(),
-                    ref settings.goJuiceConsumedOnFailure, ref goJuiceFailureBuffer, 0, settings.goJuiceCost);
+                TextFieldNumericLabeledWithReset(listingStandard,
+                    "        " + "HT.GoJuiceConsumedOnFailure".Translate(),
+                    ref settings.goJuiceConsumedOnFailure,
+                    ref goJuiceFailureBuffer,
+                    HussarTransformationSettings.DEFAULT_GO_JUICE_CONSUMED_ON_FAILURE,
+                    0, settings.goJuiceCost);
             }
 
             listingStandard.Gap();
 
+            // Component Cost
             string componentBuffer = settings.componentCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.ComponentCost".Translate(),
-                ref settings.componentCost, ref componentBuffer, 0, 99);
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.ComponentCost".Translate(),
+                ref settings.componentCost,
+                ref componentBuffer,
+                HussarTransformationSettings.DEFAULT_COMPONENT_COST,
+                0, 99);
 
-            listingStandard.CheckboxLabeled("    " + "HT.ConsumeComponentOnFailure".Translate(),
-                ref settings.consumeComponentOnFailure, "HT.ConsumeComponentOnFailureTooltip".Translate());
+            CheckboxLabeledWithReset(listingStandard,
+                "    " + "HT.ConsumeComponentOnFailure".Translate(),
+                ref settings.consumeComponentOnFailure,
+                HussarTransformationSettings.DEFAULT_CONSUME_COMPONENT_ON_FAILURE,
+                "HT.ConsumeComponentOnFailureTooltip".Translate());
 
             if (settings.consumeComponentOnFailure)
             {
                 string componentFailureBuffer = settings.componentConsumedOnFailure.ToString();
-                listingStandard.TextFieldNumericLabeled("        " + "HT.ComponentConsumedOnFailure".Translate(),
-                    ref settings.componentConsumedOnFailure, ref componentFailureBuffer, 0, settings.componentCost);
+                TextFieldNumericLabeledWithReset(listingStandard,
+                    "        " + "HT.ComponentConsumedOnFailure".Translate(),
+                    ref settings.componentConsumedOnFailure,
+                    ref componentFailureBuffer,
+                    HussarTransformationSettings.DEFAULT_COMPONENT_CONSUMED_ON_FAILURE,
+                    0, settings.componentCost);
             }
             listingStandard.GapLine();
 
-            // (4) Transformation Duration
-            listingStandard.Label("HT.TransformationDuration".Translate() + ": " +
-                "HT.Hours".Translate(settings.transformationDurationHours.ToString("0.0")));
-            settings.transformationDurationHours = listingStandard.Slider(settings.transformationDurationHours, 0f, 24f);
+            // (4) Transformation Duration - float 슬라이더
+            SliderLabeledWithReset(listingStandard,
+                "HT.TransformationDuration".Translate() + ": " +
+                "HT.Hours".Translate(settings.transformationDurationHours.ToString("0.0")),
+                ref settings.transformationDurationHours,
+                HussarTransformationSettings.DEFAULT_TRANSFORMATION_DURATION_HOURS,
+                0f, 24f);
             listingStandard.GapLine();
 
-            // (5) Power Consumption
-            listingStandard.Label("HT.PowerConsumption".Translate() + ": " +
-                settings.powerConsumption.ToString() + " W");
-            settings.powerConsumption = (int)listingStandard.Slider(settings.powerConsumption, 0, 1000);
-            listingStandard.CheckboxLabeled("    " + "HT.StopOnPowerLoss".Translate(),
-                ref settings.stopOnPowerLoss, "HT.StopOnPowerLossTooltip".Translate());
+            // (5) Power Consumption - int 슬라이더
+            SliderLabeledWithReset(listingStandard,
+                "HT.PowerConsumption".Translate() + ": " + settings.powerConsumption.ToString() + " W",
+                ref settings.powerConsumption,
+                HussarTransformationSettings.DEFAULT_POWER_CONSUMPTION,
+                0, 1000);
+
+            CheckboxLabeledWithReset(listingStandard,
+                "    " + "HT.StopOnPowerLoss".Translate(),
+                ref settings.stopOnPowerLoss,
+                HussarTransformationSettings.DEFAULT_STOP_ON_POWER_LOSS,
+                "HT.StopOnPowerLossTooltip".Translate());
             listingStandard.GapLine();
 
             // (6) Research Cost
             listingStandard.Label("HT.ResearchCost".Translate());
             string researchBuffer = settings.researchCost.ToString();
-            listingStandard.TextFieldNumericLabeled("    " + "HT.ResearchCostValue".Translate(),
-                ref settings.researchCost, ref researchBuffer, 0, 9999);
-            listingStandard.Label("HT.ResearchCostNote".Translate(), -1, "HT.ResearchCostNoteTooltip".Translate());
+            TextFieldNumericLabeledWithReset(listingStandard,
+                "    " + "HT.ResearchCostValue".Translate(),
+                ref settings.researchCost,
+                ref researchBuffer,
+                HussarTransformationSettings.DEFAULT_RESEARCH_COST,
+                0, 9999);
+            listingStandard.Label("HT.ResearchCostNote".Translate(), -1,
+                "HT.ResearchCostNoteTooltip".Translate());
 
             listingStandard.End();
             base.DoSettingsWindowContents(inRect);
@@ -291,7 +505,7 @@ namespace HussarTransformation
         public int MaxStoredMedicine => HussarTransformationMod.settings.maxStoredMedicine;
         public int MaxStoredComponents => HussarTransformationMod.settings.maxStoredComponents;
 
-        public bool autoSupply = true;
+        public bool autoSupply = false;
 
         // 재료 관리 프로퍼티들
         public int StoredGoJuice => storedGoJuice;
@@ -729,7 +943,7 @@ namespace HussarTransformation
         }
 
         // ====================================================================
-        // Main Update Loop - 이제 확실히 작동할 것
+        // Main Update Loop
         // ====================================================================
 
         protected override void Tick()
