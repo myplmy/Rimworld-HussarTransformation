@@ -287,15 +287,11 @@ namespace HussarTransformation
         private int storedMedicine = 0;
         private int storedComponents = 0;
 
-        // 재료 저장 용량 (설정 가능)
-        private const int MAX_STORED_GOJUICE = 5;
-        private const int MAX_STORED_MEDICINE = 5;
-        private const int MAX_STORED_COMPONENTS = 5;
-
         public int MaxStoredGoJuice => HussarTransformationMod.settings.maxStoredGoJuice;
         public int MaxStoredMedicine => HussarTransformationMod.settings.maxStoredMedicine;
         public int MaxStoredComponents => HussarTransformationMod.settings.maxStoredComponents;
 
+        public bool autoSupply = true;
 
         // 재료 관리 프로퍼티들
         public int StoredGoJuice => storedGoJuice;
@@ -307,10 +303,10 @@ namespace HussarTransformation
             StoredMedicine >= HussarTransformationMod.settings.medicineCost &&
             StoredComponents >= HussarTransformationMod.settings.componentCost;
 
-        // 새로 추가: 재료 추가 메서드들
+        //재료 추가 메서드들
         public bool TryAddGoJuice(int amount)
         {
-            if (storedGoJuice + amount <= MAX_STORED_GOJUICE)
+            if (storedGoJuice + amount <= MaxStoredGoJuice)
             {
                 storedGoJuice += amount;
                 return true;
@@ -320,7 +316,7 @@ namespace HussarTransformation
 
         public bool TryAddMedicine(int amount)
         {
-            if (storedMedicine + amount <= MAX_STORED_MEDICINE)
+            if (storedMedicine + amount <= MaxStoredMedicine)
             {
                 storedMedicine += amount;
                 return true;
@@ -330,12 +326,69 @@ namespace HussarTransformation
 
         public bool TryAddComponents(int amount)
         {
-            if (storedComponents + amount <= MAX_STORED_COMPONENTS)
+            if (storedComponents + amount <= MaxStoredComponents)
             {
                 storedComponents += amount;
                 return true;
             }
             return false;
+        }
+
+        // ====================================================================
+        // FindMaterial 메서드들 - WorkGiver
+        // ====================================================================
+        public Thing FindGoJuice(Pawn pawn)
+        {
+            if (StoredGoJuice >= MaxStoredGoJuice)
+                return null;
+
+            return GenClosest.ClosestThingReachable(
+                pawn.Position,
+                pawn.Map,
+                ThingRequest.ForDef(ThingDefOf.GoJuice),
+                PathEndMode.ClosestTouch,
+                TraverseParms.For(pawn),
+                9999f,
+                (Thing x) => !x.IsForbidden(pawn) && pawn.CanReserve(x)
+            );
+        }
+
+        public Thing FindMedicine(Pawn pawn)
+        {
+            if (StoredMedicine >= MaxStoredMedicine)
+                return null;
+
+            return GenClosest.ClosestThingReachable(
+                pawn.Position,
+                pawn.Map,
+                ThingRequest.ForGroup(ThingRequestGroup.Medicine),
+                PathEndMode.ClosestTouch,
+                TraverseParms.For(pawn),
+                9999f,
+                (Thing x) => !x.IsForbidden(pawn) && pawn.CanReserve(x)
+            );
+        }
+
+        public Thing FindComponents(Pawn pawn)
+        {
+            if (StoredComponents >= MaxStoredComponents)
+                return null;
+
+            return GenClosest.ClosestThingReachable(
+                pawn.Position,
+                pawn.Map,
+                ThingRequest.ForDef(ThingDefOf.ComponentIndustrial),
+                PathEndMode.ClosestTouch,
+                TraverseParms.For(pawn),
+                9999f,
+                (Thing x) => !x.IsForbidden(pawn) && pawn.CanReserve(x)
+            );
+        }
+
+        public int CalculateHaulCount(Thing material, int maxStorage, int currentStored)
+        {
+            int spaceRemaining = maxStorage - currentStored;
+            return Mathf.Min(material.stackCount, spaceRemaining);
         }
 
         // 재료 소모 메서드 
@@ -386,26 +439,26 @@ namespace HussarTransformation
 
             // 자동공급 설정과 관계없이 저장 용량만 확인
             // (자동공급 제어는 HaulDestinationEnabled에서 처리)
-            if (thing.def == ThingDefOf.GoJuice && StoredGoJuice < MAX_STORED_GOJUICE)
+            if (thing.def == ThingDefOf.GoJuice && StoredGoJuice < MaxStoredGoJuice)
             {
                 /*
                   Log.Message($"[HussarPod DEBUG] Accepts() returning TRUE - Go-Juice accepted " +
-                            $"(Current: {StoredGoJuice}/{MAX_STORED_GOJUICE})");
+                            $"(Current: {StoredGoJuice}/{MaxStoredGoJuice})");
                 */
                 return true;
             }
-            if (thing.def.IsMedicine && StoredMedicine < MAX_STORED_MEDICINE)
+            if (thing.def.IsMedicine && StoredMedicine < MaxStoredMedicine)
             {
                 /*
                 Log.Message($"[HussarPod DEBUG] Accepts() returning TRUE - Medicine accepted " +
-                            $"(Current: {StoredMedicine}/{MAX_STORED_MEDICINE})");
+                            $"(Current: {StoredMedicine}/{MaxStoredMedicine})");
                 */
                 return true;
             }
-            if (thing.def == ThingDefOf.ComponentIndustrial && StoredComponents < MAX_STORED_COMPONENTS)
+            if (thing.def == ThingDefOf.ComponentIndustrial && StoredComponents < MaxStoredComponents)
             {
 /*                Log.Message($"[HussarPod DEBUG] Accepts() returning TRUE - Components accepted " +
-                            $"(Current: {StoredComponents}/{MAX_STORED_COMPONENTS})");*/
+                            $"(Current: {StoredComponents}/{MaxStoredComponents})");*/
                 return true;
             }
 
@@ -510,11 +563,11 @@ namespace HussarTransformation
         {
             int remaining = 0;
             if (thingDef == ThingDefOf.GoJuice)
-                remaining = MAX_STORED_GOJUICE - StoredGoJuice;
+                remaining = MaxStoredGoJuice - StoredGoJuice;
             else if (thingDef.IsMedicine)
-                remaining = MAX_STORED_MEDICINE - StoredMedicine;
+                remaining = MaxStoredMedicine - StoredMedicine;
             else if (thingDef == ThingDefOf.ComponentIndustrial)
-                remaining = MAX_STORED_COMPONENTS - StoredComponents;
+                remaining = MaxStoredComponents - StoredComponents;
 
             //Log.Message($"[HussarPod DEBUG] SpaceRemainingFor({thingDef?.label}) called - returning {remaining}");
             return remaining;
@@ -569,7 +622,7 @@ namespace HussarTransformation
         public bool StorageTabVisible => true; // 저장소 탭 표시 여부
 
         // ====================================================================
-        // 우클릭 메뉴 추가 (선택사항 - 더 명확한 UX를 위해)
+        // 우클릭 운반 메뉴 (선택사항 - 더 명확한 UX를 위해)
         // ====================================================================
 
         public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
@@ -585,67 +638,78 @@ namespace HussarTransformation
             }
 
             // Go-Juice 운반 옵션
-            if (StoredGoJuice < MAX_STORED_GOJUICE)
+            if (StoredGoJuice < MaxStoredGoJuice)
             {
-                var goJuice = selPawn.Map.listerThings.ThingsOfDef(ThingDefOf.GoJuice)
-                    .Where(t => !t.IsForbidden(selPawn.Faction) &&
-                               selPawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
-                    .OrderBy(t => t.Position.DistanceToSquared(selPawn.Position))
-                    .FirstOrDefault();
-
-                if (goJuice != null)
-                {
-                    int canHaul = Math.Min(goJuice.stackCount, MAX_STORED_GOJUICE - StoredGoJuice);
-                    yield return new FloatMenuOption($"Haul {canHaul} {ThingDefOf.GoJuice.label} to {this.Label} ({StoredGoJuice}/{MAX_STORED_GOJUICE})", () =>
+                yield return new FloatMenuOption(
+                    $"Haul go-juice to {this.Label} ({StoredGoJuice}/{MaxStoredGoJuice})",
+                    () =>
                     {
-                        var job = JobMaker.MakeJob(JobDefOf.HaulToContainer, goJuice, this);
-                        job.count = canHaul; // 실제 필요한 만큼만 운반
-                        selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                        Thing goJuice = FindGoJuice(selPawn);  // 기존 메서드 사용 (예약 체크 포함)
+                        if (goJuice == null)
+                        {
+                            Messages.Message("No available go-juice to haul", MessageTypeDefOf.RejectInput);
+                            return;
+                        }
+
+                        int canHaul = CalculateHaulCount(goJuice, MaxStoredGoJuice, StoredGoJuice);
+                        Job job = HaulAIUtility.HaulToContainerJob(selPawn, goJuice, this);
+                        job.count = canHaul;
+
+                        if (!selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc))
+                        {
+                            Messages.Message("Failed to start hauling job", MessageTypeDefOf.RejectInput);
+                        }
                     });
-                }
             }
 
             // Medicine 운반 옵션
-            if (StoredMedicine < MAX_STORED_MEDICINE)
+            if (StoredMedicine < MaxStoredMedicine)
             {
-                var medicine = selPawn.Map.listerThings.ThingsInGroup(ThingRequestGroup.Medicine)
-                    .Where(t => !t.IsForbidden(selPawn.Faction) &&
-                               selPawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
-                    .OrderBy(t => t.MarketValue)
-                    .ThenBy(t => t.Position.DistanceToSquared(selPawn.Position))
-                    .FirstOrDefault();
-
-                if (medicine != null)
-                {
-                    int canHaul = Math.Min(medicine.stackCount, MAX_STORED_MEDICINE - StoredMedicine);
-                    yield return new FloatMenuOption($"Haul {canHaul} {medicine.def.label} to {this.Label} ({StoredMedicine}/{MAX_STORED_MEDICINE})", () =>
+                yield return new FloatMenuOption(
+                    $"Haul medicine to {this.Label} ({StoredMedicine}/{MaxStoredMedicine})",
+                    () =>
                     {
-                        var job = JobMaker.MakeJob(JobDefOf.HaulToContainer, medicine, this);
-                        job.count = canHaul; // 실제 필요한 만큼만 운반
-                        selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                        Thing medicine = FindMedicine(selPawn);  // 기존 메서드 사용 (예약 체크 포함)
+                        if (medicine == null)
+                        {
+                            Messages.Message("No available medicine to haul", MessageTypeDefOf.RejectInput);
+                            return;
+                        }
+
+                        int canHaul = CalculateHaulCount(medicine, MaxStoredMedicine, StoredMedicine);
+                        Job job = HaulAIUtility.HaulToContainerJob(selPawn, medicine, this);
+                        job.count = canHaul;
+
+                        if (!selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc))
+                        {
+                            Messages.Message("Failed to start hauling job", MessageTypeDefOf.RejectInput);
+                        }
                     });
-                }
             }
 
             // Components 운반 옵션
-            if (StoredComponents < MAX_STORED_COMPONENTS)
+            if (StoredComponents < MaxStoredComponents)
             {
-                var components = selPawn.Map.listerThings.ThingsOfDef(ThingDefOf.ComponentIndustrial)
-                    .Where(t => !t.IsForbidden(selPawn.Faction) &&
-                               selPawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))
-                    .OrderBy(t => t.Position.DistanceToSquared(selPawn.Position))
-                    .FirstOrDefault();
-
-                if (components != null)
-                {
-                    int canHaul = Math.Min(components.stackCount, MAX_STORED_COMPONENTS - StoredComponents);
-                    yield return new FloatMenuOption($"Haul {canHaul} components to {this.Label} ({StoredComponents}/{MAX_STORED_COMPONENTS})", () =>
+                yield return new FloatMenuOption(
+                    $"Haul components to {this.Label} ({StoredComponents}/{MaxStoredComponents})",
+                    () =>
                     {
-                        var job = JobMaker.MakeJob(JobDefOf.HaulToContainer, components, this);
-                        job.count = canHaul; // 실제 필요한 만큼만 운반
-                        selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                        Thing components = FindComponents(selPawn);  // 기존 메서드 사용 (예약 체크 포함)
+                        if (components == null)
+                        {
+                            Messages.Message("No available components to haul", MessageTypeDefOf.RejectInput);
+                            return;
+                        }
+
+                        int canHaul = CalculateHaulCount(components, MaxStoredComponents, StoredComponents);
+                        Job job = HaulAIUtility.HaulToContainerJob(selPawn, components, this);
+                        job.count = canHaul;
+
+                        if (!selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc))
+                        {
+                            Messages.Message("Failed to start hauling job", MessageTypeDefOf.RejectInput);
+                        }
                     });
-                }
             }
         }
 
@@ -695,11 +759,11 @@ namespace HussarTransformation
                     // 저장 가능한 양 계산
                     int canStore = 0;
                     if (item.def == ThingDefOf.GoJuice)
-                        canStore = Math.Min(item.stackCount, MAX_STORED_GOJUICE - StoredGoJuice);
+                        canStore = Math.Min(item.stackCount, MaxStoredGoJuice - StoredGoJuice);
                     else if (item.def.IsMedicine)
-                        canStore = Math.Min(item.stackCount, MAX_STORED_MEDICINE - StoredMedicine);
+                        canStore = Math.Min(item.stackCount, MaxStoredMedicine - StoredMedicine);
                     else if (item.def == ThingDefOf.ComponentIndustrial)
-                        canStore = Math.Min(item.stackCount, MAX_STORED_COMPONENTS - StoredComponents);
+                        canStore = Math.Min(item.stackCount, MaxStoredComponents - StoredComponents);
 
                     Log.Message($"[HussarPod DEBUG] Can store: {canStore} of {item.stackCount}");
 
@@ -1024,6 +1088,7 @@ namespace HussarTransformation
             Scribe_Values.Look(ref storedGoJuice, "storedGoJuice", 0);
             Scribe_Values.Look(ref storedMedicine, "storedMedicine", 0);
             Scribe_Values.Look(ref storedComponents, "storedComponents", 0);
+            Scribe_Values.Look(ref autoSupply, "autoSupply", true);
         }
         // ====================================================================
         // GetInspectString, GetGizmos, etc...
@@ -1046,9 +1111,9 @@ namespace HussarTransformation
                 sb.Append("\n");
             }
             sb.Append("HT.StoredMaterials".Translate() + ":");
-            sb.Append($"\n  {ThingDefOf.GoJuice.LabelCap}: {StoredGoJuice}/{MAX_STORED_GOJUICE}");
-            sb.Append($"\n  {"HT.Medicine".Translate()}: {StoredMedicine}/{MAX_STORED_MEDICINE}");
-            sb.Append($"\n  {ThingDefOf.ComponentIndustrial.LabelCap}: {StoredComponents}/{MAX_STORED_COMPONENTS}");
+            sb.Append($"\n  {ThingDefOf.GoJuice.LabelCap}: {StoredGoJuice}/{MaxStoredGoJuice}");
+            sb.Append($"\n  {"HT.Medicine".Translate()}: {StoredMedicine}/{MaxStoredMedicine}");
+            sb.Append($"\n  {ThingDefOf.ComponentIndustrial.LabelCap}: {StoredComponents}/{MaxStoredComponents}");
 
             return sb.ToString();
         }
@@ -1063,6 +1128,19 @@ namespace HussarTransformation
             {
                 yield return gizmo;
             }
+
+            // 자동공급 토글 버튼 추가
+            Command_Toggle autoSupplyToggle = new Command_Toggle();
+            autoSupplyToggle.defaultLabel = "Auto Supply";
+            autoSupplyToggle.defaultDesc = "When enabled, colonists will automatically haul materials to this pod.";
+            autoSupplyToggle.icon = autoSupply ? TexCommand.ForbidOff : TexCommand.ForbidOn;
+            autoSupplyToggle.isActive = () => autoSupply;
+            autoSupplyToggle.toggleAction = delegate
+            {
+                autoSupply = !autoSupply;
+            };
+            yield return autoSupplyToggle;
+
 
             // Begin Transformation 버튼
             if (!IsRunning && HasEnoughMaterials && this.Map != null)
@@ -1176,7 +1254,7 @@ namespace HussarTransformation
         }
     }
 
-    public class JobDriver_SupplyMaterials : JobDriver
+/*    public class JobDriver_SupplyMaterials : JobDriver
     {
         private Building_HussarPod Pod => (Building_HussarPod)job.targetA.Thing;
         private Thing Material => job.targetB.Thing;
@@ -1345,5 +1423,168 @@ namespace HussarTransformation
             supplyMaterial.defaultCompleteMode = ToilCompleteMode.Instant;
             yield return supplyMaterial;
         }
+    }*/
+    // ====================================================================
+    // 7. WORKGIVERS for material supply
+    // ====================================================================
+
+    public class WorkGiver_HaulGoJuiceToHussarPod : WorkGiver_Scanner
+    {
+        public override ThingRequest PotentialWorkThingRequest =>
+            ThingRequest.ForDef(DefDatabase<ThingDef>.GetNamed("HussarPod"));
+
+        public override PathEndMode PathEndMode => PathEndMode.Touch;
+
+        public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            if (!pawn.CanReserve(t, 1, -1, null, forced))
+                return false;
+
+            if (pawn.Map.designationManager.DesignationOn(t, DesignationDefOf.Deconstruct) != null)
+                return false;
+
+            Building_HussarPod pod = t as Building_HussarPod;
+            if (pod == null || pod.StoredGoJuice >= pod.MaxStoredGoJuice)
+                return false;
+
+            // 자동공급이 꺼져있으면 작업 안 함
+            if (!forced && !pod.autoSupply)
+                return false;
+
+            if (t.IsBurning())
+                return false;
+
+            Thing material = pod.FindGoJuice(pawn);
+            if (material == null)
+            {
+                JobFailReason.Is("No available go-juice");
+                return false;
+            }
+
+            return true;
+        }
+
+        public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            Building_HussarPod pod = t as Building_HussarPod;
+            if (pod == null)
+                return null;
+
+            Thing material = pod.FindGoJuice(pawn);
+            if (material == null)
+                return null;
+
+            int count = pod.CalculateHaulCount(material, pod.MaxStoredGoJuice, pod.StoredGoJuice);
+            Job job = HaulAIUtility.HaulToContainerJob(pawn, material, t);
+            job.count = Mathf.Min(job.count, count);
+            return job;
+        }
     }
+
+    public class WorkGiver_HaulMedicineToHussarPod : WorkGiver_Scanner
+    {
+        public override ThingRequest PotentialWorkThingRequest =>
+            ThingRequest.ForDef(DefDatabase<ThingDef>.GetNamed("HussarPod"));
+
+        public override PathEndMode PathEndMode => PathEndMode.Touch;
+
+        public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            if (!pawn.CanReserve(t, 1, -1, null, forced))
+                return false;
+
+            if (pawn.Map.designationManager.DesignationOn(t, DesignationDefOf.Deconstruct) != null)
+                return false;
+
+            Building_HussarPod pod = t as Building_HussarPod;
+            if (pod == null || pod.StoredMedicine >= pod.MaxStoredMedicine)
+                return false;
+
+            // 자동공급이 꺼져있으면 작업 안 함
+            if (!forced && !pod.autoSupply)
+                return false;
+
+            if (t.IsBurning())
+                return false;
+
+            Thing material = pod.FindMedicine(pawn);
+            if (material == null)
+            {
+                JobFailReason.Is("No available medicine");
+                return false;
+            }
+
+            return true;
+        }
+
+        public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            Building_HussarPod pod = t as Building_HussarPod;
+            if (pod == null)
+                return null;
+
+            Thing material = pod.FindMedicine(pawn);
+            if (material == null)
+                return null;
+
+            int count = pod.CalculateHaulCount(material, pod.MaxStoredMedicine, pod.StoredMedicine);
+            Job job = HaulAIUtility.HaulToContainerJob(pawn, material, t);
+            job.count = Mathf.Min(job.count, count);
+            return job;
+        }
+    }
+
+    public class WorkGiver_HaulComponentsToHussarPod : WorkGiver_Scanner
+    {
+        public override ThingRequest PotentialWorkThingRequest =>
+            ThingRequest.ForDef(DefDatabase<ThingDef>.GetNamed("HussarPod"));
+
+        public override PathEndMode PathEndMode => PathEndMode.Touch;
+
+        public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            if (!pawn.CanReserve(t, 1, -1, null, forced))
+                return false;
+
+            if (pawn.Map.designationManager.DesignationOn(t, DesignationDefOf.Deconstruct) != null)
+                return false;
+
+            Building_HussarPod pod = t as Building_HussarPod;
+            if (pod == null || pod.StoredComponents >= pod.MaxStoredComponents)
+                return false;
+
+            // 자동공급이 꺼져있으면 작업 안 함
+            if (!forced && !pod.autoSupply)
+                return false;
+
+            if (t.IsBurning())
+                return false;
+
+            Thing material = pod.FindComponents(pawn);
+            if (material == null)
+            {
+                JobFailReason.Is("No available components");
+                return false;
+            }
+
+            return true;
+        }
+
+        public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            Building_HussarPod pod = t as Building_HussarPod;
+            if (pod == null)
+                return null;
+
+            Thing material = pod.FindComponents(pawn);
+            if (material == null)
+                return null;
+
+            int count = pod.CalculateHaulCount(material, pod.MaxStoredComponents, pod.StoredComponents);
+            Job job = HaulAIUtility.HaulToContainerJob(pawn, material, t);
+            job.count = Mathf.Min(job.count, count);
+            return job;
+        }
+    }
+
 }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <!-- Hussar Pod Material Supply WorkGivers -->
+  
+  <WorkGiverDef>
+    <defName>HaulGoJuiceToHussarPod</defName>
+    <label>haul go-juice to hussar pod</label>
+    <giverClass>HussarTransformation.WorkGiver_HaulGoJuiceToHussarPod</giverClass>
+    <workType>Hauling</workType>
+    <verb>haul to</verb>
+    <gerund>hauling to</gerund>
+    <priorityInType>109</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+  <WorkGiverDef>
+    <defName>HaulMedicineToHussarPod</defName>
+    <label>haul medicine to hussar pod</label>
+    <giverClass>HussarTransformation.WorkGiver_HaulMedicineToHussarPod</giverClass>
+    <workType>Hauling</workType>
+    <verb>haul to</verb>
+    <gerund>hauling to</gerund>
+    <priorityInType>109</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+  <WorkGiverDef>
+    <defName>HaulComponentsToHussarPod</defName>
+    <label>haul components to hussar pod</label>
+    <giverClass>HussarTransformation.WorkGiver_HaulComponentsToHussarPod</giverClass>
+    <workType>Hauling</workType>
+    <verb>haul to</verb>
+    <gerund>hauling to</gerund>
+    <priorityInType>109</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+</Defs>
