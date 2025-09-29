@@ -7,15 +7,7 @@
     <tickerType>Normal</tickerType>
     <thingClass>HussarTransformation.Building_HussarPod</thingClass>
     <graphicData>
-  <!-- 옵션 1: 올바른 바닐라 경로 -->
       <texPath>Things/Building/Ship/ShipCryptosleepCasket</texPath>
-  
-  <!-- 또는 옵션 2: 다른 바닐라 건물 사용 -->
-  <!-- <texPath>Things/Building/Production/BiosculturePod/BiosculturePod</texPath> -->
-  
-  <!-- 또는 옵션 3: 단순 박스 형태 -->
-  <!-- <texPath>Things/Building/Production/HopperFull</texPath> -->
-  <!-- <graphicClass>Graphic_Single</graphicClass> -->
       <graphicClass>Graphic_Multi</graphicClass>
       <color>(180,180,255)</color>  <!-- RGB 값으로 색조 변경 -->
       <drawSize>(1,2)</drawSize>
