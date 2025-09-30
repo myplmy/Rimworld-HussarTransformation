@@ -854,11 +854,21 @@ namespace HussarTransformation
             // Go-Juice 운반 옵션
             if (StoredGoJuice < MaxStoredGoJuice)
             {
-                yield return new FloatMenuOption(
-                    $"Haul go-juice to {this.Label} ({StoredGoJuice}/{MaxStoredGoJuice})",
-                    () =>
+                Thing testGoJuice = FindGoJuice(selPawn);
+                string label = $"Haul go-juice to {this.Label} ({StoredGoJuice}/{MaxStoredGoJuice})";
+
+                if (testGoJuice == null)
+                {
+                    // disabled 옵션 (action = null)
+                    yield return new FloatMenuOption(label + " (no available go-juice)", null);
+                }
+                else
+                {
+                    // 활성화된 옵션
+                    yield return new FloatMenuOption(label, () =>
                     {
-                        Thing goJuice = FindGoJuice(selPawn);  // 기존 메서드 사용 (예약 체크 포함)
+                        // Action 실행 시 재검증
+                        Thing goJuice = FindGoJuice(selPawn);
                         if (goJuice == null)
                         {
                             Messages.Message("No available go-juice to haul", MessageTypeDefOf.RejectInput);
@@ -874,16 +884,27 @@ namespace HussarTransformation
                             Messages.Message("Failed to start hauling job", MessageTypeDefOf.RejectInput);
                         }
                     });
+                }
             }
 
             // Medicine 운반 옵션
             if (StoredMedicine < MaxStoredMedicine)
             {
-                yield return new FloatMenuOption(
-                    $"Haul medicine to {this.Label} ({StoredMedicine}/{MaxStoredMedicine})",
-                    () =>
+                Thing testMedicine = FindMedicine(selPawn);
+                string label = $"Haul medicine to {this.Label} ({StoredMedicine}/{MaxStoredMedicine})";
+
+                if (testMedicine == null)
+                {
+                    // disabled 옵션 (action = null)
+                    yield return new FloatMenuOption(label + " (no available medicine)", null);
+                }
+                else
+                {
+                    // 활성화된 옵션
+                    yield return new FloatMenuOption(label, () =>
                     {
-                        Thing medicine = FindMedicine(selPawn);  // 기존 메서드 사용 (예약 체크 포함)
+                        // Action 실행 시 재검증
+                        Thing medicine = FindMedicine(selPawn);
                         if (medicine == null)
                         {
                             Messages.Message("No available medicine to haul", MessageTypeDefOf.RejectInput);
@@ -899,16 +920,27 @@ namespace HussarTransformation
                             Messages.Message("Failed to start hauling job", MessageTypeDefOf.RejectInput);
                         }
                     });
+                }
             }
 
             // Components 운반 옵션
             if (StoredComponents < MaxStoredComponents)
             {
-                yield return new FloatMenuOption(
-                    $"Haul components to {this.Label} ({StoredComponents}/{MaxStoredComponents})",
-                    () =>
+                Thing testComponents = FindComponents(selPawn);
+                string label = $"Haul components to {this.Label} ({StoredComponents}/{MaxStoredComponents})";
+
+                if (testComponents == null)
+                {
+                    // disabled 옵션 (action = null)
+                    yield return new FloatMenuOption(label + " (no available components)", null);
+                }
+                else
+                {
+                    // 활성화된 옵션
+                    yield return new FloatMenuOption(label, () =>
                     {
-                        Thing components = FindComponents(selPawn);  // 기존 메서드 사용 (예약 체크 포함)
+                        // Action 실행 시 재검증
+                        Thing components = FindComponents(selPawn);
                         if (components == null)
                         {
                             Messages.Message("No available components to haul", MessageTypeDefOf.RejectInput);
@@ -924,6 +956,7 @@ namespace HussarTransformation
                             Messages.Message("Failed to start hauling job", MessageTypeDefOf.RejectInput);
                         }
                     });
+                }
             }
         }
 
