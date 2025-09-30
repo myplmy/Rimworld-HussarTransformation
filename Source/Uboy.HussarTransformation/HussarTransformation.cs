@@ -1083,24 +1083,6 @@ namespace HussarTransformation
                 return;
             }
 
-            // 욕구 관리
-            var pawn = ContainedPawn;
-            if (pawn?.needs != null)
-            {
-                if (pawn.needs.food != null) pawn.needs.food.CurLevel = pawn.needs.food.MaxLevel;
-                if (pawn.needs.rest != null) pawn.needs.rest.CurLevel = pawn.needs.rest.MaxLevel;
-                if (pawn.needs.joy != null) pawn.needs.joy.CurLevel = pawn.needs.joy.MaxLevel;
-                if (pawn.needs.comfort != null) pawn.needs.comfort.CurLevel = pawn.needs.comfort.MaxLevel;
-                if (pawn.needs.beauty != null) pawn.needs.beauty.CurLevel = pawn.needs.beauty.MaxLevel;
-                if (pawn.needs.outdoors != null) pawn.needs.outdoors.CurLevel = pawn.needs.outdoors.MaxLevel;
-            }
-
-            // 정신적 상태 관리
-            if (pawn?.mindState?.mentalStateHandler != null)
-            {
-                pawn.mindState.mentalStateHandler.Reset();
-            }
-
             // Progress the transformation
             progress += 1f;
 
