@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  
+  <!-- Hussar Pod Material Supply WorkGivers -->
+  <HaulGoJuiceToHussarPod.label>haul go-juice to hussar pod</HaulGoJuiceToHussarPod.label>
+  <HaulGoJuiceToHussarPod.verb>haul to</HaulGoJuiceToHussarPod.verb>
+  <HaulGoJuiceToHussarPod.gerund>hauling to</HaulGoJuiceToHussarPod.gerund>
+  
+  <HaulMedicineToHussarPod.label>haul medicine to hussar pod</HaulMedicineToHussarPod.label>
+  <HaulMedicineToHussarPod.verb>haul to</HaulMedicineToHussarPod.verb>
+  <HaulMedicineToHussarPod.gerund>hauling to</HaulMedicineToHussarPod.gerund>
+  
+  <HaulComponentsToHussarPod.label>haul components to hussar pod</HaulComponentsToHussarPod.label>
+  <HaulComponentsToHussarPod.verb>haul to</HaulComponentsToHussarPod.verb>
+  <HaulComponentsToHussarPod.gerund>hauling to</HaulComponentsToHussarPod.gerund>
+  
+</LanguageData>

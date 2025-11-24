@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  
+  <!-- Hussar Pod Material Supply WorkGivers -->
+  <HaulGoJuiceToHussarPod.label>후사르 변형기로 고주스 운반</HaulGoJuiceToHussarPod.label>
+  <HaulGoJuiceToHussarPod.verb>운반</HaulGoJuiceToHussarPod.verb>
+  <HaulGoJuiceToHussarPod.gerund>운반 중</HaulGoJuiceToHussarPod.gerund>
+  
+  <HaulMedicineToHussarPod.label>후사르 변형기로 의약품 운반</HaulMedicineToHussarPod.label>
+  <HaulMedicineToHussarPod.verb>운반</HaulMedicineToHussarPod.verb>
+  <HaulMedicineToHussarPod.gerund>운반 중</HaulMedicineToHussarPod.gerund>
+  
+  <HaulComponentsToHussarPod.label>후사르 변형기로 부품 운반</HaulComponentsToHussarPod.label>
+  <HaulComponentsToHussarPod.verb>운반</HaulComponentsToHussarPod.verb>
+  <HaulComponentsToHussarPod.gerund>운반 중</HaulComponentsToHussarPod.gerund>
+  
+</LanguageData>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  
+  <!-- Hussar Transformation Research -->
+  <HussarTransformationSurgery.label>hussar transformation surgery</HussarTransformationSurgery.label>
+  <HussarTransformationSurgery.description>Allows the construction of a Hussar Transformation Pod, which can turn a baseliner into a hussar through a lengthy operation. The process cannot be performed on individuals younger than 13 due to technical limitations.</HussarTransformationSurgery.description>
+  
+</LanguageData>
