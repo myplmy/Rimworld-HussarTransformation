@@ -482,7 +482,6 @@ namespace HussarTransformation
         private const int TicksPerRealSecond = 60;
         private const int TicksPerHour = 2500; // RimWorld hour
 
-        // Properties 섹션에 추가
         public override bool IsContentsSuspended => true;
 
         public override Vector3 PawnDrawOffset => IntVec3.West.RotatedBy(base.Rotation).ToVector3() / def.size.x;
@@ -508,6 +507,10 @@ namespace HussarTransformation
         public int MaxStoredComponents => HussarTransformationMod.settings.maxStoredComponents;
 
         public bool autoSupply = false;
+
+        private bool allowMedicineHerbal = true;
+        private bool allowMedicineIndustrial = true;
+        private bool allowMedicineUltratech = true;
 
         // 재료 관리 프로퍼티들
         public int StoredGoJuice => storedGoJuice;
@@ -595,8 +598,21 @@ namespace HussarTransformation
                 PathEndMode.ClosestTouch,
                 TraverseParms.For(pawn),
                 9999f,
-                (Thing x) => !x.IsForbidden(pawn) && pawn.CanReserve(x)
+                (Thing x) => !x.IsForbidden(pawn) &&
+                             pawn.CanReserve(x) &&
+                             IsMedicineAllowed(x)  // ← 필터링 추가
             );
+        }
+
+        private bool IsMedicineAllowed(Thing medicine)
+        {
+            if (medicine.def == ThingDefOf.MedicineHerbal)
+                return allowMedicineHerbal;
+            if (medicine.def == ThingDefOf.MedicineIndustrial)
+                return allowMedicineIndustrial;
+            if (medicine.def == ThingDefOf.MedicineUltratech)
+                return allowMedicineUltratech;
+            return true;
         }
 
         public Thing FindComponents(Pawn pawn)
@@ -1386,6 +1402,9 @@ namespace HussarTransformation
             Scribe_Values.Look(ref storedMedicineUltratech, "storedMedicineUltratech", 0);
             Scribe_Values.Look(ref storedComponents, "storedComponents", 0);
             Scribe_Values.Look(ref autoSupply, "autoSupply", true);
+            Scribe_Values.Look(ref allowMedicineHerbal, "allowMedicineHerbal", true);
+            Scribe_Values.Look(ref allowMedicineIndustrial, "allowMedicineIndustrial", true);
+            Scribe_Values.Look(ref allowMedicineUltratech, "allowMedicineUltratech", true);
         }
 
         // ====================================================================
@@ -1511,13 +1530,62 @@ namespace HussarTransformation
             };
             yield return autoSupplyToggle;
 
+            Command_Action medicineFilter = new Command_Action
+            {
+                defaultLabel = "HT.MedicineFilter".Translate(),
+                defaultDesc = "HT.MedicineFilterDesc".Translate(),
+                icon = ThingDefOf.MedicineIndustrial.uiIcon,
+                //icon = ContentFinder<Texture2D>.Get("UI/Buttons/Drop", true),
+                action = delegate
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+                    // Herbal Medicine
+                    string herbalStatus = allowMedicineHerbal ?
+                        "HT.Allowed".Translate() :
+                        "HT.NotAllowed".Translate();
+                    string herbalLabel = ThingDefOf.MedicineHerbal.LabelCap + $" ({herbalStatus})";
+                    Color herbalColor = allowMedicineHerbal ? Color.green : Color.red;
+                    options.Add(new FloatMenuOption(
+                        herbalLabel.Colorize(herbalColor),
+                        () => { allowMedicineHerbal = !allowMedicineHerbal; }
+                    ));
+
+                    // Industrial Medicine
+                    string industrialStatus = allowMedicineIndustrial ?
+                        "HT.Allowed".Translate() :
+                        "HT.NotAllowed".Translate();
+                    string industrialLabel = ThingDefOf.MedicineIndustrial.LabelCap + $" ({industrialStatus})";
+                    Color industrialColor = allowMedicineIndustrial ? Color.green : Color.red;
+                    options.Add(new FloatMenuOption(
+                        industrialLabel.Colorize(industrialColor),
+                        () => { allowMedicineIndustrial = !allowMedicineIndustrial; }
+                    ));
+
+                    // Ultratech Medicine
+                    string ultratechStatus = allowMedicineUltratech ?
+                        "HT.Allowed".Translate() :
+                        "HT.NotAllowed".Translate();
+                    string ultratechLabel = ThingDefOf.MedicineUltratech.LabelCap + $" ({ultratechStatus})";
+                    Color ultratechColor = allowMedicineUltratech ? Color.green : Color.red;
+                    options.Add(new FloatMenuOption(
+                        ultratechLabel.Colorize(ultratechColor),
+                        () => { allowMedicineUltratech = !allowMedicineUltratech; }
+                    ));
+
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            };
+            yield return medicineFilter;
+
+
             // 재료 추출 버튼 (재료가 있을 때만 표시)
             if (StoredGoJuice > 0 || StoredMedicine > 0 || StoredComponents > 0)
             {
                 Command_Action extractMaterials = new Command_Action
                 {
-                    defaultLabel = "Extract Materials",
-                    defaultDesc = "Extract stored materials from this transformation pod",
+                    defaultLabel = "HT.ExtractMaterials".Translate(),
+                    defaultDesc = "HT.ExtractMaterialsDesc".Translate(),
                     icon = ContentFinder<Texture2D>.Get("UI/Buttons/Drop", true),
                     action = delegate
                     {
@@ -1570,10 +1638,17 @@ namespace HussarTransformation
                         }
                         else
                         {
-                            Messages.Message("No materials to extract", MessageTypeDefOf.RejectInput);
+                            Messages.Message("HT.NoMaterialsToExtract".Translate(), MessageTypeDefOf.RejectInput);
                         }
                     }
                 };
+
+                // 변형 중일 때 비활성화
+                if (IsRunning)
+                {
+                    extractMaterials.Disable("HT.CannotExtractWhileRunning".Translate());
+                }
+
                 yield return extractMaterials;
             }
 

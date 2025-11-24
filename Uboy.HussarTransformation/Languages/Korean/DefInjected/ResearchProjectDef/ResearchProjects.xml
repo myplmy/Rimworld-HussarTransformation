@@ -5,4 +5,7 @@
   <HussarTransformationSurgery.label>후사르 변형 수술</HussarTransformationSurgery.label>
   <HussarTransformationSurgery.description>특별한 장치 내에서 행해지는 수술을 통해 13세 이상의 인간을 후사르로 만들 수 있습니다. 수술에는 시간이 다소 소요됩니다. 기술적 한계로 인해 13세 미만에게는 시행할 수 없습니다.</HussarTransformationSurgery.description>
   
+  <!-- Hussar Technology Research Tab -->
+  <HussarTech.label>후사르 기술</HussarTech.label>
+  <HussarTech.description>후사르 제노타입 변형 및 강화와 관련된 기술들입니다.</HussarTech.description>
 </LanguageData>

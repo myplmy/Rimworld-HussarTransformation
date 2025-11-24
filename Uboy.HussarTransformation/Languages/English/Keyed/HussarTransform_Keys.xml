@@ -79,5 +79,16 @@
    <HT.AutoSupplyToggleDesc>Toggle automatic material supply by colonists.</HT.AutoSupplyToggleDesc>
    <HT.AutoSupplyEnabledMessage>Auto supply enabled - colonists will bring materials automatically.</HT.AutoSupplyEnabledMessage>
    <HT.AutoSupplyDisabledMessage>Auto supply disabled - colonists will not bring materials automatically.</HT.AutoSupplyDisabledMessage>
+
+   <HT.MedicineFilter>Medicine Filter</HT.MedicineFilter>
+   <HT.MedicineFilterDesc>Select which types of medicine to collect</HT.MedicineFilterDesc>
+   <HT.Allowed>allowed</HT.Allowed>
+   <HT.NotAllowed>not allowed</HT.NotAllowed>
+
+   <!-- Extract Materials -->
+   <HT.ExtractMaterials>Extract Materials</HT.ExtractMaterials>
+   <HT.ExtractMaterialsDesc>Extract stored materials from this transformation pod</HT.ExtractMaterialsDesc>
+   <HT.CannotExtractWhileRunning>Cannot extract materials while transformation is in progress</HT.CannotExtractWhileRunning>
+   <HT.NoMaterialsToExtract>No materials to extract</HT.NoMaterialsToExtract>
 </LanguageData>
 

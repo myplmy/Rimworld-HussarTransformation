@@ -79,4 +79,15 @@
    <HT.AutoSupplyToggleDesc>정착민들의 자동 재료 공급을 활성화/비활성화합니다.</HT.AutoSupplyToggleDesc>
    <HT.AutoSupplyEnabledMessage>자동 공급이 활성화되었습니다 - 정착민들이 자동으로 재료를 가져올 것입니다.</HT.AutoSupplyEnabledMessage>
    <HT.AutoSupplyDisabledMessage>자동 공급이 비활성화되었습니다 - 정착민들이 자동으로 재료를 가져오지 않습니다.</HT.AutoSupplyDisabledMessage>
+
+   <HT.MedicineFilter>의약품 필터</HT.MedicineFilter>
+   <HT.MedicineFilterDesc>수집할 의약품 종류를 선택합니다</HT.MedicineFilterDesc>
+   <HT.Allowed>허용</HT.Allowed>
+   <HT.NotAllowed>비허용</HT.NotAllowed>
+
+   <!-- Extract Materials -->
+   <HT.ExtractMaterials>재료 추출</HT.ExtractMaterials>
+   <HT.ExtractMaterialsDesc>변형기에 저장된 재료를 추출합니다</HT.ExtractMaterialsDesc>
+   <HT.CannotExtractWhileRunning>변형 진행 중에는 재료를 추출할 수 없습니다</HT.CannotExtractWhileRunning>
+   <HT.NoMaterialsToExtract>추출할 재료가 없습니다</HT.NoMaterialsToExtract>
 </LanguageData>
