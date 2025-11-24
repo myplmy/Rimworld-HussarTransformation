@@ -5,7 +5,7 @@
     <HT.AllowOtherXenotypesTooltip>체크 시, 모든 제노휴먼이 후사르로 변형될 수 있습니다. 체크 해제 시, 베이스라이너만 변형기를 사용할 수 있습니다.</HT.AllowOtherXenotypesTooltip>
     <HT.StorageCapacity>변환기 소모품 최대 저장 한도</HT.StorageCapacity>
     <HT.MaxStoredGoJuice>고주스 저장 한도</HT.MaxStoredGoJuice>
-    <HT.MaxStoredMedicine>약품 저장 한도</HT.MaxStoredMedicine>
+    <HT.MaxStoredMedicine>의약품 저장 한도</HT.MaxStoredMedicine>
     <HT.MaxStoredComponents>부품 저장 한도</HT.MaxStoredComponents>
     <HT.ItemCosts>변형 소모품</HT.ItemCosts>
     <HT.GoJuiceCost>고주스</HT.GoJuiceCost>

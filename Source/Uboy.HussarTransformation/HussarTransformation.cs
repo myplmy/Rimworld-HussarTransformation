@@ -498,7 +498,9 @@ namespace HussarTransformation
 
         // 재료 저장 변수들
         private int storedGoJuice = 0;
-        private int storedMedicine = 0;
+        private int storedMedicineHerbal = 0;
+        private int storedMedicineIndustrial = 0;
+        private int storedMedicineUltratech = 0;
         private int storedComponents = 0;
 
         public int MaxStoredGoJuice => HussarTransformationMod.settings.maxStoredGoJuice;
@@ -509,7 +511,7 @@ namespace HussarTransformation
 
         // 재료 관리 프로퍼티들
         public int StoredGoJuice => storedGoJuice;
-        public int StoredMedicine => storedMedicine;
+        public int StoredMedicine => storedMedicineHerbal + storedMedicineIndustrial + storedMedicineUltratech;
         public int StoredComponents => storedComponents;
 
         public bool HasEnoughMaterials =>
@@ -528,13 +530,27 @@ namespace HussarTransformation
             return false;
         }
 
-        public bool TryAddMedicine(int amount)
+        public bool TryAddMedicine(Thing medicine, int amount)
         {
-            if (storedMedicine + amount <= MaxStoredMedicine)
+            if (StoredMedicine + amount > MaxStoredMedicine)
+                return false;
+
+            if (medicine.def == ThingDefOf.MedicineHerbal)
             {
-                storedMedicine += amount;
+                storedMedicineHerbal += amount;
                 return true;
             }
+            else if (medicine.def == ThingDefOf.MedicineIndustrial)
+            {
+                storedMedicineIndustrial += amount;
+                return true;
+            }
+            else if (medicine.def == ThingDefOf.MedicineUltratech)
+            {
+                storedMedicineUltratech += amount;
+                return true;
+            }
+
             return false;
         }
 
@@ -605,25 +621,51 @@ namespace HussarTransformation
             return Mathf.Min(material.stackCount, spaceRemaining);
         }
 
-        // 재료 소모 메서드 
+        // 재료 소모 메서드 수정 - 낮은 등급부터 소모
         private void ConsumeStoredMaterials()
         {
             var settings = HussarTransformationMod.settings;
 
-            // 저장된 재료가 충분한지 확인
-            if (HasEnoughMaterials)
-            {
-                storedGoJuice -= settings.goJuiceCost;
-                storedMedicine -= settings.medicineCost;
-                storedComponents -= settings.componentCost;
-            }
-            else
+            if (!HasEnoughMaterials)
             {
                 Log.Error("[Hussar Transformation] Attempted to consume stored materials, but not enough were available.");
                 storedGoJuice = 0;
-                storedMedicine = 0;
+                storedMedicineHerbal = 0;
+                storedMedicineIndustrial = 0;
+                storedMedicineUltratech = 0;
                 storedComponents = 0;
+                return;
+            }
 
+            // Go-Juice와 Components 소모
+            storedGoJuice -= settings.goJuiceCost;
+            storedComponents -= settings.componentCost;
+
+            // Medicine 소모 - 낮은 등급부터
+            int medicineNeeded = settings.medicineCost;
+
+            // 1. Herbal 먼저
+            if (storedMedicineHerbal > 0)
+            {
+                int takeFromHerbal = Mathf.Min(storedMedicineHerbal, medicineNeeded);
+                storedMedicineHerbal -= takeFromHerbal;
+                medicineNeeded -= takeFromHerbal;
+            }
+
+            // 2. Industrial
+            if (medicineNeeded > 0 && storedMedicineIndustrial > 0)
+            {
+                int takeFromIndustrial = Mathf.Min(storedMedicineIndustrial, medicineNeeded);
+                storedMedicineIndustrial -= takeFromIndustrial;
+                medicineNeeded -= takeFromIndustrial;
+            }
+
+            // 3. Ultratech
+            if (medicineNeeded > 0 && storedMedicineUltratech > 0)
+            {
+                int takeFromUltratech = Mathf.Min(storedMedicineUltratech, medicineNeeded);
+                storedMedicineUltratech -= takeFromUltratech;
+                medicineNeeded -= takeFromUltratech;
             }
         }
 
@@ -990,20 +1032,16 @@ namespace HussarTransformation
 
                 foreach (Thing thing in innerContainer)
                 {
-                    if (!(thing is Pawn)) // Pawn이 아닌 아이템들만 처리
+                    if (!(thing is Pawn))
                     {
                         itemsToProcess.Add(thing);
                     }
                 }
 
-                // 아이템들을 하나씩 처리하되, 처리 후 즉시 컨테이너에서 제거
-                for (int i = itemsToProcess.Count - 1; i >= 0; i--) // 역순으로 처리
+                for (int i = itemsToProcess.Count - 1; i >= 0; i--)
                 {
                     Thing item = itemsToProcess[i];
 
-                    Log.Message($"[HussarPod DEBUG] Processing container item: {item.def.label}, StackCount: {item.stackCount}");
-
-                    // 저장 가능한 양 계산
                     int canStore = 0;
                     if (item.def == ThingDefOf.GoJuice)
                         canStore = Math.Min(item.stackCount, MaxStoredGoJuice - StoredGoJuice);
@@ -1012,11 +1050,8 @@ namespace HussarTransformation
                     else if (item.def == ThingDefOf.ComponentIndustrial)
                         canStore = Math.Min(item.stackCount, MaxStoredComponents - StoredComponents);
 
-                    Log.Message($"[HussarPod DEBUG] Can store: {canStore} of {item.stackCount}");
-
                     if (canStore > 0)
                     {
-                        // 저장 처리
                         bool stored = false;
                         string materialName = "";
 
@@ -1025,7 +1060,7 @@ namespace HussarTransformation
                             stored = true;
                             materialName = "Go-Juice";
                         }
-                        else if (item.def.IsMedicine && TryAddMedicine(canStore))
+                        else if (item.def.IsMedicine && TryAddMedicine(item, canStore))
                         {
                             stored = true;
                             materialName = item.def.label;
@@ -1038,30 +1073,20 @@ namespace HussarTransformation
 
                         if (stored)
                         {
-                            Log.Message($"[HussarPod DEBUG] Successfully stored {canStore} {materialName}");
-
                             if (canStore >= item.stackCount)
                             {
-                                // 전체 아이템 저장 - 컨테이너에서 제거
                                 innerContainer.Remove(item);
-                                Log.Message($"[HussarPod DEBUG] Removed entire item from container");
                             }
                             else
                             {
-                                // 일부만 저장 - 스택 크기 줄이기
                                 item.stackCount -= canStore;
-                                Log.Message($"[HussarPod DEBUG] Reduced item stack to {item.stackCount}");
-
-                                // 나머지를 맵에 드롭
                                 Thing remainder = item.SplitOff(item.stackCount);
-                                innerContainer.Remove(item); // 원본 제거
+                                innerContainer.Remove(item);
 
-                                // 나머지를 근처에 드롭
                                 if (!GenPlace.TryPlaceThing(remainder, this.InteractionCell, this.Map, ThingPlaceMode.Near))
                                 {
                                     GenPlace.TryPlaceThing(remainder, this.Position, this.Map, ThingPlaceMode.Near);
                                 }
-                                Log.Message($"[HussarPod DEBUG] Dropped remainder {remainder.stackCount} items near pod");
                             }
 
                             Messages.Message($"Added {canStore} {materialName} to transformation pod",
@@ -1070,10 +1095,7 @@ namespace HussarTransformation
                     }
                     else
                     {
-                        // 저장할 수 없음 - 아이템을 맵에 드롭하고 컨테이너에서 제거
-                        Log.Message($"[HussarPod DEBUG] Cannot store {item.def.label} - dropping to ground");
                         innerContainer.Remove(item);
-
                         if (!GenPlace.TryPlaceThing(item, this.InteractionCell, this.Map, ThingPlaceMode.Near))
                         {
                             GenPlace.TryPlaceThing(item, this.Position, this.Map, ThingPlaceMode.Near);
@@ -1278,13 +1300,57 @@ namespace HussarTransformation
         public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
             Map map = Map;
+            IntVec3 pos = Position;
+
+            if (map != null && (mode == DestroyMode.Deconstruct || mode == DestroyMode.KillFinalize))
+            {
+                // Go-Juice 드롭
+                if (storedGoJuice > 0)
+                {
+                    Thing goJuice = ThingMaker.MakeThing(ThingDefOf.GoJuice);
+                    goJuice.stackCount = storedGoJuice;
+                    GenPlace.TryPlaceThing(goJuice, pos, map, ThingPlaceMode.Near);
+                }
+
+                // Herbal Medicine 드롭
+                if (storedMedicineHerbal > 0)
+                {
+                    Thing medicine = ThingMaker.MakeThing(ThingDefOf.MedicineHerbal);
+                    medicine.stackCount = storedMedicineHerbal;
+                    GenPlace.TryPlaceThing(medicine, pos, map, ThingPlaceMode.Near);
+                }
+
+                // Industrial Medicine 드롭
+                if (storedMedicineIndustrial > 0)
+                {
+                    Thing medicine = ThingMaker.MakeThing(ThingDefOf.MedicineIndustrial);
+                    medicine.stackCount = storedMedicineIndustrial;
+                    GenPlace.TryPlaceThing(medicine, pos, map, ThingPlaceMode.Near);
+                }
+
+                // Ultratech Medicine 드롭
+                if (storedMedicineUltratech > 0)
+                {
+                    Thing medicine = ThingMaker.MakeThing(ThingDefOf.MedicineUltratech);
+                    medicine.stackCount = storedMedicineUltratech;
+                    GenPlace.TryPlaceThing(medicine, pos, map, ThingPlaceMode.Near);
+                }
+
+                // Components 드롭
+                if (storedComponents > 0)
+                {
+                    Thing components = ThingMaker.MakeThing(ThingDefOf.ComponentIndustrial);
+                    components.stackCount = storedComponents;
+                    GenPlace.TryPlaceThing(components, pos, map, ThingPlaceMode.Near);
+                }
+            }
+
             base.Destroy(mode);
 
             if (innerContainer.Count > 0 && (mode == DestroyMode.Deconstruct || mode == DestroyMode.KillFinalize))
             {
                 if (mode != DestroyMode.Deconstruct)
                 {
-                    // Pawn이 있으면 기절시키기
                     List<Pawn> pawns = new List<Pawn>();
                     foreach (Thing item in innerContainer)
                     {
@@ -1298,7 +1364,7 @@ namespace HussarTransformation
                         HealthUtility.DamageUntilDowned(pawn);
                     }
                 }
-                innerContainer.TryDropAll(Position, map, ThingPlaceMode.Near);
+                innerContainer.TryDropAll(pos, map, ThingPlaceMode.Near);
             }
             innerContainer.ClearAndDestroyContents();
         }
@@ -1315,10 +1381,77 @@ namespace HussarTransformation
 
             // 재료 저장 정보
             Scribe_Values.Look(ref storedGoJuice, "storedGoJuice", 0);
-            Scribe_Values.Look(ref storedMedicine, "storedMedicine", 0);
+            Scribe_Values.Look(ref storedMedicineHerbal, "storedMedicineHerbal", 0);
+            Scribe_Values.Look(ref storedMedicineIndustrial, "storedMedicineIndustrial", 0);
+            Scribe_Values.Look(ref storedMedicineUltratech, "storedMedicineUltratech", 0);
             Scribe_Values.Look(ref storedComponents, "storedComponents", 0);
             Scribe_Values.Look(ref autoSupply, "autoSupply", true);
         }
+
+        // ====================================================================
+        // 재료 꺼내기
+        // ====================================================================
+
+        private void ExtractGoJuice()
+        {
+            if (storedGoJuice <= 0) return;
+
+            Thing goJuice = ThingMaker.MakeThing(ThingDefOf.GoJuice);
+            goJuice.stackCount = storedGoJuice;
+
+            if (GenPlace.TryPlaceThing(goJuice, InteractionCell, Map, ThingPlaceMode.Near))
+            {
+                Messages.Message($"Extracted {storedGoJuice} go-juice from transformation pod",
+                    this, MessageTypeDefOf.TaskCompletion);
+                storedGoJuice = 0;
+            }
+        }
+
+        private void ExtractMedicine(ThingDef medicineType)
+        {
+            int amount = 0;
+
+            if (medicineType == ThingDefOf.MedicineHerbal)
+                amount = storedMedicineHerbal;
+            else if (medicineType == ThingDefOf.MedicineIndustrial)
+                amount = storedMedicineIndustrial;
+            else if (medicineType == ThingDefOf.MedicineUltratech)
+                amount = storedMedicineUltratech;
+
+            if (amount <= 0) return;
+
+            Thing medicine = ThingMaker.MakeThing(medicineType);
+            medicine.stackCount = amount;
+
+            if (GenPlace.TryPlaceThing(medicine, InteractionCell, Map, ThingPlaceMode.Near))
+            {
+                Messages.Message($"Extracted {amount} {medicineType.label} from transformation pod",
+                    this, MessageTypeDefOf.TaskCompletion);
+
+                if (medicineType == ThingDefOf.MedicineHerbal)
+                    storedMedicineHerbal = 0;
+                else if (medicineType == ThingDefOf.MedicineIndustrial)
+                    storedMedicineIndustrial = 0;
+                else if (medicineType == ThingDefOf.MedicineUltratech)
+                    storedMedicineUltratech = 0;
+            }
+        }
+
+        private void ExtractComponents()
+        {
+            if (storedComponents <= 0) return;
+
+            Thing components = ThingMaker.MakeThing(ThingDefOf.ComponentIndustrial);
+            components.stackCount = storedComponents;
+
+            if (GenPlace.TryPlaceThing(components, InteractionCell, Map, ThingPlaceMode.Near))
+            {
+                Messages.Message($"Extracted {storedComponents} components from transformation pod",
+                    this, MessageTypeDefOf.TaskCompletion);
+                storedComponents = 0;
+            }
+        }
+
         // ====================================================================
         // GetInspectString, GetGizmos, etc...
         // ====================================================================
@@ -1329,10 +1462,9 @@ namespace HussarTransformation
             var sb = new System.Text.StringBuilder();
             sb.Append(base.GetInspectString());
 
-            // 빈 줄 제거를 위해 조건부 AppendLine 사용
             if (sb.Length > 0)
             {
-                sb.Append("\n"); // AppendLine() 대신 "\n" 사용
+                sb.Append("\n");
             }
             if (IsRunning && ContainedPawn != null)
             {
@@ -1342,6 +1474,15 @@ namespace HussarTransformation
             sb.Append("HT.StoredMaterials".Translate() + ":");
             sb.Append($"\n  {ThingDefOf.GoJuice.LabelCap}: {StoredGoJuice}/{MaxStoredGoJuice}");
             sb.Append($"\n  {"HT.Medicine".Translate()}: {StoredMedicine}/{MaxStoredMedicine}");
+
+            // 의약품 종류별 표시 (있는 것만)
+            if (storedMedicineHerbal > 0)
+                sb.Append($"\n    {ThingDefOf.MedicineHerbal.LabelCap}: {storedMedicineHerbal}");
+            if (storedMedicineIndustrial > 0)
+                sb.Append($"\n    {ThingDefOf.MedicineIndustrial.LabelCap}: {storedMedicineIndustrial}");
+            if (storedMedicineUltratech > 0)
+                sb.Append($"\n    {ThingDefOf.MedicineUltratech.LabelCap}: {storedMedicineUltratech}");
+
             sb.Append($"\n  {ThingDefOf.ComponentIndustrial.LabelCap}: {StoredComponents}/{MaxStoredComponents}");
 
             return sb.ToString();
@@ -1358,7 +1499,7 @@ namespace HussarTransformation
                 yield return gizmo;
             }
 
-            // 자동공급 토글 버튼 추가
+            // 자동공급 토글 버튼
             Command_Toggle autoSupplyToggle = new Command_Toggle();
             autoSupplyToggle.defaultLabel = "Auto Supply";
             autoSupplyToggle.defaultDesc = "When enabled, colonists will automatically haul materials to this pod.";
@@ -1370,6 +1511,71 @@ namespace HussarTransformation
             };
             yield return autoSupplyToggle;
 
+            // 재료 추출 버튼 (재료가 있을 때만 표시)
+            if (StoredGoJuice > 0 || StoredMedicine > 0 || StoredComponents > 0)
+            {
+                Command_Action extractMaterials = new Command_Action
+                {
+                    defaultLabel = "Extract Materials",
+                    defaultDesc = "Extract stored materials from this transformation pod",
+                    icon = ContentFinder<Texture2D>.Get("UI/Buttons/Drop", true),
+                    action = delegate
+                    {
+                        List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+                        // Go-Juice
+                        if (StoredGoJuice > 0)
+                        {
+                            options.Add(new FloatMenuOption(
+                                $"{ThingDefOf.GoJuice.LabelCap} ({StoredGoJuice})",
+                                () => ExtractGoJuice()
+                            ));
+                        }
+
+                        // Medicine - 종류별로
+                        if (storedMedicineHerbal > 0)
+                        {
+                            options.Add(new FloatMenuOption(
+                                $"{ThingDefOf.MedicineHerbal.LabelCap} ({storedMedicineHerbal})",
+                                () => ExtractMedicine(ThingDefOf.MedicineHerbal)
+                            ));
+                        }
+                        if (storedMedicineIndustrial > 0)
+                        {
+                            options.Add(new FloatMenuOption(
+                                $"{ThingDefOf.MedicineIndustrial.LabelCap} ({storedMedicineIndustrial})",
+                                () => ExtractMedicine(ThingDefOf.MedicineIndustrial)
+                            ));
+                        }
+                        if (storedMedicineUltratech > 0)
+                        {
+                            options.Add(new FloatMenuOption(
+                                $"{ThingDefOf.MedicineUltratech.LabelCap} ({storedMedicineUltratech})",
+                                () => ExtractMedicine(ThingDefOf.MedicineUltratech)
+                            ));
+                        }
+
+                        // Components
+                        if (StoredComponents > 0)
+                        {
+                            options.Add(new FloatMenuOption(
+                                $"{ThingDefOf.ComponentIndustrial.LabelCap} ({StoredComponents})",
+                                () => ExtractComponents()
+                            ));
+                        }
+
+                        if (options.Any())
+                        {
+                            Find.WindowStack.Add(new FloatMenu(options));
+                        }
+                        else
+                        {
+                            Messages.Message("No materials to extract", MessageTypeDefOf.RejectInput);
+                        }
+                    }
+                };
+                yield return extractMaterials;
+            }
 
             // Begin Transformation 버튼
             if (!IsRunning && HasEnoughMaterials && this.Map != null)
@@ -1389,7 +1595,6 @@ namespace HussarTransformation
                             {
                                 floatMenuOptions.Add(new FloatMenuOption(pawn.LabelCap, () =>
                                 {
-                                    // 실행 시점 재검증
                                     var currentReport = CanAcceptPawn(pawn);
                                     if (!currentReport.Accepted)
                                     {
@@ -1398,7 +1603,6 @@ namespace HussarTransformation
                                         return;
                                     }
 
-                                    // 추가 안전 검사: 정착민이 맵에 있는지 확인
                                     if (!pawn.Spawned || pawn.Map != this.Map)
                                     {
                                         Messages.Message($"{pawn.LabelShortCap} is no longer available.",
