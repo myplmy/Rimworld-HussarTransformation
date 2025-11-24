@@ -1290,23 +1290,42 @@ namespace HussarTransformation
                 return;
             }
 
+            // 실패 시 재료 소진 추가
+            ConsumeFailureMaterials();
+
             EjectContents();
             progress = 0f;
 
-            if (HussarTransformationMod.settings.consumeMedicineOnFailure)
+            // 메시지 구성
+            string message = "HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason);
+
+            // 소진된 재료 표시
+            List<string> consumedItems = new List<string>();
+
+            if (HussarTransformationMod.settings.consumeGoJuiceOnFailure &&
+                HussarTransformationMod.settings.goJuiceConsumedOnFailure > 0)
             {
-                Messages.Message(
-                    "HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason) + "\n" +
-                    "HT.MedicineConsumedOnFailureMessage".Translate(
-                        HussarTransformationMod.settings.medicineConsumedOnFailure),
-                    pawn, MessageTypeDefOf.NegativeEvent);
+                consumedItems.Add($"{HussarTransformationMod.settings.goJuiceConsumedOnFailure} {ThingDefOf.GoJuice.label}");
             }
-            else
+
+            if (HussarTransformationMod.settings.consumeMedicineOnFailure &&
+                HussarTransformationMod.settings.medicineConsumedOnFailure > 0)
             {
-                Messages.Message(
-                    "HT.TransformationCancelledMessage".Translate(pawn.LabelShortCap, reason),
-                    pawn, MessageTypeDefOf.NegativeEvent);
+                consumedItems.Add($"{HussarTransformationMod.settings.medicineConsumedOnFailure} medicine");
             }
+
+            if (HussarTransformationMod.settings.consumeComponentOnFailure &&
+                HussarTransformationMod.settings.componentConsumedOnFailure > 0)
+            {
+                consumedItems.Add($"{HussarTransformationMod.settings.componentConsumedOnFailure} {ThingDefOf.ComponentIndustrial.label}");
+            }
+
+            if (consumedItems.Any())
+            {
+                message += "\n" + "Materials consumed: ".Translate() + consumedItems.ToCommaList();
+            }
+
+            Messages.Message(message, pawn, MessageTypeDefOf.NegativeEvent);
         }
 
         // ====================================================================
@@ -1505,6 +1524,56 @@ namespace HussarTransformation
             sb.Append($"\n  {ThingDefOf.ComponentIndustrial.LabelCap}: {StoredComponents}/{MaxStoredComponents}");
 
             return sb.ToString();
+        }
+
+        // 실패 시 재료 소진 메서드 (낮은 등급부터 소모)
+        private void ConsumeFailureMaterials()
+        {
+            var settings = HussarTransformationMod.settings;
+
+            // Go-Juice 소진
+            if (settings.consumeGoJuiceOnFailure)
+            {
+                int toConsume = Mathf.Min(settings.goJuiceConsumedOnFailure, storedGoJuice);
+                storedGoJuice -= toConsume;
+            }
+
+            // Medicine 소진 (낮은 등급부터)
+            if (settings.consumeMedicineOnFailure)
+            {
+                int medicineNeeded = Mathf.Min(settings.medicineConsumedOnFailure, StoredMedicine);
+
+                // 1. Herbal 먼저
+                if (storedMedicineHerbal > 0 && medicineNeeded > 0)
+                {
+                    int takeFromHerbal = Mathf.Min(storedMedicineHerbal, medicineNeeded);
+                    storedMedicineHerbal -= takeFromHerbal;
+                    medicineNeeded -= takeFromHerbal;
+                }
+
+                // 2. Industrial
+                if (storedMedicineIndustrial > 0 && medicineNeeded > 0)
+                {
+                    int takeFromIndustrial = Mathf.Min(storedMedicineIndustrial, medicineNeeded);
+                    storedMedicineIndustrial -= takeFromIndustrial;
+                    medicineNeeded -= takeFromIndustrial;
+                }
+
+                // 3. Ultratech
+                if (storedMedicineUltratech > 0 && medicineNeeded > 0)
+                {
+                    int takeFromUltratech = Mathf.Min(storedMedicineUltratech, medicineNeeded);
+                    storedMedicineUltratech -= takeFromUltratech;
+                    medicineNeeded -= takeFromUltratech;
+                }
+            }
+
+            // Component 소진
+            if (settings.consumeComponentOnFailure)
+            {
+                int toConsume = Mathf.Min(settings.componentConsumedOnFailure, storedComponents);
+                storedComponents -= toConsume;
+            }
         }
 
         // ====================================================================
@@ -1726,6 +1795,7 @@ namespace HussarTransformation
             }
         }
     }
+
 
     // ====================================================================
     // 6. JOB DRIVER for entering the pod & supplying materials
